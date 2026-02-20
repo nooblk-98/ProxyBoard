@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: xray-server
     restart: unless-stopped
-    network_mode: host  # Use host network for direct port binding
+    network_mode: host
     volumes:
       - ./xray-configs:/etc/xray:ro
       - ./certs:/certs:ro
@@ -16,24 +16,11 @@ services:
       - XRAY_LOGLEVEL=info
       - TZ=UTC
     ports:
-      - "80:80"      # Port 80 WebSocket (fallback)
-      - "443:443"    # Port 443 WebSocket + TLS
-      - "8080:8080"  # Port 8080 WebSocket
-      - "8443:8443"  # Port 8443 WebSocket + TLS
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+      - "8443:8443"
     stdin_open: true
     tty: true
     cap_add:
       - NET_BIND_SERVICE
-
-  # Optional: Nginx reverse proxy for fallback
-  nginx:
-    image: nginx:alpine
-    container_name: xray-nginx
-    restart: unless-stopped
-    ports:
-      - "8000:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./html:/usr/share/nginx/html:ro
-    depends_on:
-      - xray-server
