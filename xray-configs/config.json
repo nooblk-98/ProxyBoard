@@ -1,0 +1,183 @@
+{
+  "log": {
+    "loglevel": "info",
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log"
+  },
+  "inbounds": [
+    {
+      "port": 80,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "http-ws",
+      "settings": {
+        "clients": [
+          {
+            "id": "12345678-1234-1234-1234-123456789012",
+            "level": 0,
+            "email": "client@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/ws",
+          "headers": {
+            "Host": "example.com"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 8080,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "alt-ws",
+      "settings": {
+        "clients": [
+          {
+            "id": "87654321-4321-4321-4321-210987654321",
+            "level": 0,
+            "email": "client2@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/ws8080",
+          "headers": {
+            "Host": "example.com"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 8443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "tls-ws-alt",
+      "settings": {
+        "clients": [
+          {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "level": 0,
+            "email": "client3@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/certs/cert.pem",
+              "keyFile": "/certs/key.pem"
+            }
+          ],
+          "minVersion": "1.2"
+        },
+        "wsSettings": {
+          "path": "/ws8443",
+          "headers": {
+            "Host": "example.com"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "tls-ws-primary",
+      "settings": {
+        "clients": [
+          {
+            "id": "99999999-8888-7777-6666-555555555555",
+            "level": 0,
+            "email": "client4@example.com"
+          }
+        ],
+        "decryption": "none",
+        "fallbacks": [
+          {
+            "dest": 8000,
+            "xver": 1
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/certs/cert.pem",
+              "keyFile": "/certs/key.pem"
+            }
+          ],
+          "minVersion": "1.2",
+          "cipherSuites": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+        },
+        "wsSettings": {
+          "path": "/ws443",
+          "headers": {
+            "Host": "example.com"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPOnDemand",
+    "rules": [
+      {
+        "type": "field",
+        "domain": ["geosite:private"],
+        "outboundTag": "blocked"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:private"],
+        "outboundTag": "blocked"
+      }
+    ]
+  }
+}

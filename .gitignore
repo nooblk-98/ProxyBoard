@@ -1,0 +1,42 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Certificates and keys
+certs/
+certs/*
+!certs/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# Temporary files
+tmp/
+temp/
+*.tmp
