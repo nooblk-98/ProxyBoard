@@ -20,8 +20,12 @@ RUN mkdir -p /etc/xray /certs /var/log/xray
 # Copy Xray configuration files
 COPY xray-configs/ /etc/xray/
 
-# Copy certificate files (if they exist)
-COPY certs/ /certs/ || true
+# Create certificate directory
+RUN mkdir -p /certs && mkdir -p /tmp/certs_temp
+
+# Try to copy certificates if they exist
+COPY certs/* /tmp/certs_temp/ 2>/dev/null || true
+RUN if [ "$(ls -A /tmp/certs_temp/)" ]; then mv /tmp/certs_temp/* /certs/; fi && rm -rf /tmp/certs_temp
 
 # Expose ports
 EXPOSE 80 443 8080 8443
