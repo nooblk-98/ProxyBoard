@@ -212,8 +212,16 @@ echo -e "${YELLOW}Summary:${NC}"
 echo "  Domain: $DOMAIN"
 echo "  Email: $EMAIL"
 echo "  Certificate: Self-signed"
-echo "  WS ports: $PORT_80 ($PATH_80), $PORT_8080 ($PATH_8080)"
-echo "  WS+TLS ports: $PORT_443 ($PATH_443), $PORT_8443 ($PATH_8443)"
+if [ "$ENABLE_8080" = "yes" ]; then
+    echo "  WS ports: $PORT_80 ($PATH_80), $PORT_8080 ($PATH_8080)"
+else
+    echo "  WS ports: $PORT_80 ($PATH_80)"
+fi
+if [ "$ENABLE_8443" = "yes" ]; then
+    echo "  WS+TLS ports: $PORT_443 ($PATH_443), $PORT_8443 ($PATH_8443)"
+else
+    echo "  WS+TLS ports: $PORT_443 ($PATH_443)"
+fi
 echo ""
 read -p "Continue with these settings? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
@@ -245,10 +253,14 @@ UUID_8443=$(generate_uuid)
 UUID_443=$(generate_uuid)
 
 echo "Generated UUIDs:"
-echo -e "  Port 80:   ${GREEN}$UUID_80${NC}"
-echo -e "  Port 8080: ${GREEN}$UUID_8080${NC}"
-echo -e "  Port 8443: ${GREEN}$UUID_8443${NC}"
-echo -e "  Port 443:  ${GREEN}$UUID_443${NC}"
+echo -e "  Port ${PORT_80}:   ${GREEN}$UUID_80${NC}"
+if [ "$ENABLE_8080" = "yes" ]; then
+    echo -e "  Port ${PORT_8080}: ${GREEN}$UUID_8080${NC}"
+fi
+if [ "$ENABLE_8443" = "yes" ]; then
+    echo -e "  Port ${PORT_8443}: ${GREEN}$UUID_8443${NC}"
+fi
+echo -e "  Port ${PORT_443}:  ${GREEN}$UUID_443${NC}"
 echo ""
 
 # ============================================================================
