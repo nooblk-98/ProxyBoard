@@ -510,43 +510,21 @@ else
         mkdir -p qrcodes
         qrencode -t PNG -s 10 -o qrcodes/port80.png "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
         qrencode -t PNG -s 10 -o qrcodes/port8080.png "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
-        qrencode -t PNG -s 10 -o q& Paste to Client):
-
-━━━ Port 80 (HTTP WebSocket) ━━━
-vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS
-
-━━━ Port 8080 (Alternative WebSocket) ━━━
-vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS
-
-━━━ Port 8443 (WebSocket + TLS) ━━━
-vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS
-
-━━━ Port 443 (WebSocket + TLS - RECOMMENDED) ✓ ━━━
-vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS
-Port 8080 (Alternative WebSocket):
-vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS
-
-Port 8443 (WebSocket + TLS):
-vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS
-
-Port 443 (WebSocket + TLS - RECOMMENDED) ✓:
-vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS
-
-═══════════════════════════════════════════════════════════════
-
-🔗 BASE64 ENCODED CONFIGS (for import):
-
-Port 80:
-$CONFIG_80_B64
-
-Port 8080:
-$CONFIG_8080_B64
-
-Port 8443:
-$CONFIG_8443_B64
-
-Port 443 (RECOMMENDED):
-$CONFIG_443_B64
+        qrencode -t PNG -s 10 -o qrcodes/port8443.png "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS"
+        qrencode -t PNG -s 10 -o qrcodes/port443.png "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
+        
+        echo ""
+        echo -e "${GREEN}Port 443 (Recommended) - Scan with your phone:${NC}"
+        qrencode -t ANSIUTF8 "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
+        echo ""
+        echo -e "${GREEN}✓ QR codes generated in: qrcodes/${NC}"
+    else
+        echo "Could not install qrencode. You can:"
+        echo "- Install manually: sudo apt-get install qrencode"
+        echo "- Use online QR generator with connection strings above"
+    fi
+    echo ""
+fi
 
 ═══════════════════════════════════════════════════════════════
 
