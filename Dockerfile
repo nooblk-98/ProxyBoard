@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     ca-certificates \
-    certbot \
     openssl \
     unzip \
     --no-install-recommends && \

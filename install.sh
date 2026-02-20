@@ -202,22 +202,16 @@ else
 fi
 echo ""
 
-# Certificate type selection
-echo "Choose certificate type:"
-echo "1) Let's Encrypt (production) - requires domain to be accessible"
-echo "2) Self-signed (testing/development)"
-read -p "Select (1 or 2): " CERT_TYPE
-if [ "$CERT_TYPE" != "1" ] && [ "$CERT_TYPE" != "2" ]; then
-    echo -e "${RED}❌ Invalid selection${NC}"
-    exit 1
-fi
+# Certificate type (self-signed only)
+CERT_TYPE="self-signed"
+echo -e "${YELLOW}Certificate: Self-signed (only)${NC}"
 echo ""
 
 # Confirmation
 echo -e "${YELLOW}Summary:${NC}"
 echo "  Domain: $DOMAIN"
 echo "  Email: $EMAIL"
-echo "  Certificate: $([ "$CERT_TYPE" = "1" ] && echo "Let's Encrypt" || echo "Self-signed")"
+echo "  Certificate: Self-signed"
 echo "  WS ports: $PORT_80 ($PATH_80), $PORT_8080 ($PATH_8080)"
 echo "  WS+TLS ports: $PORT_443 ($PATH_443), $PORT_8443 ($PATH_8443)"
 echo ""
@@ -359,61 +353,21 @@ echo -e "${BLUE}PHASE 6: Setup SSL Certificates${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-if [ "$CERT_TYPE" = "1" ]; then
-    # Let's Encrypt Certificate
-    echo "Obtaining Let's Encrypt certificate..."
-    echo "⚠️  Make sure your domain is accessible and port 80 is open"
-    echo ""
-    
-    # Install certbot if needed
-    if ! command -v certbot &> /dev/null; then
-        echo "Installing certbot..."
-        sudo apt-get update -qq
-        sudo apt-get install -y certbot > /dev/null 2>&1
-    fi
-    
-    # Obtain certificate
-    if sudo certbot certonly \
-        --standalone \
-        --agree-tos \
-        --no-eff-email \
-        -m "$EMAIL" \
-        -d "$DOMAIN" \
-        --non-interactive 2>/dev/null; then
-        
-        # Copy certificates
-        sudo cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem certs/cert.pem
-        sudo cp /etc/letsencrypt/live/$DOMAIN/privkey.pem certs/key.pem
-        sudo chown $(whoami):$(whoami) certs/cert.pem certs/key.pem
-        chmod 644 certs/cert.pem
-        chmod 600 certs/key.pem
-        
-        echo -e "${GREEN}✓ Let's Encrypt certificate obtained${NC}"
-    else
-        echo -e "${RED}❌ Failed to obtain Let's Encrypt certificate${NC}"
-        echo "Make sure:"
-        echo "  1. Domain DNS is pointing to this server"
-        echo "  2. Port 80 is open in firewall"
-        echo "  3. No other service is using port 80"
-        exit 1
-    fi
-else
-    # Self-signed Certificate
-    echo "Generating self-signed certificate..."
-    
-    openssl genrsa -out certs/key.pem 2048 > /dev/null 2>&1
-    openssl req -new -x509 \
-        -key certs/key.pem \
-        -out certs/cert.pem \
-        -days 365 \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN" > /dev/null 2>&1
-    
-    chmod 644 certs/cert.pem
-    chmod 600 certs/key.pem
-    
-    echo -e "${GREEN}✓ Self-signed certificate generated${NC}"
-    echo -e "${YELLOW}⚠️  Remember: Self-signed certs are for testing only${NC}"
-fi
+# Self-signed Certificate
+echo "Generating self-signed certificate..."
+
+openssl genrsa -out certs/key.pem 2048 > /dev/null 2>&1
+openssl req -new -x509 \
+    -key certs/key.pem \
+    -out certs/cert.pem \
+    -days 365 \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN" > /dev/null 2>&1
+
+chmod 644 certs/cert.pem
+chmod 600 certs/key.pem
+
+echo -e "${GREEN}✓ Self-signed certificate generated${NC}"
+echo -e "${YELLOW}⚠️  Remember: Self-signed certs are for testing only${NC}"
 
 echo ""
 
@@ -541,7 +495,7 @@ echo ""
 echo -e "${YELLOW}📋 Installation Summary:${NC}"
 echo "  Domain: $DOMAIN"
 echo "  Email: $EMAIL"
-echo "  Certificate: $([ "$CERT_TYPE" = "1" ] && echo "Let's Encrypt" || echo "Self-signed")"
+echo "  Certificate: Self-signed"
 echo "  Ports: 80, 8080, 8443, 443"
 echo "  Container: xray-server (Running ✓)"
 echo ""
