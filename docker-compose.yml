@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   xray-server:
     build:
@@ -8,10 +6,6 @@ services:
     container_name: xray-server
     restart: unless-stopped
     network_mode: host
-    volumes:
-      - ./opt/xray/xray-configs:/etc/xray:ro
-      - ./opt/xray/certs:/certs:ro
-      - ./opt/xray/logs:/var/log/xray
     environment:
       - XRAY_LOGLEVEL=info
       - TZ=UTC
