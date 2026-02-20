@@ -461,69 +461,68 @@ echo -e "${BLUE}Client Import Methods${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Generate base64 encoded configs
-echo "1️⃣ Base64 Encoded Configs (for direct import):"
+echo "1️⃣ VLESS Connection Strings (ready to import):"
 echo ""
 
-# Port 80
-CONFIG_80_B64=$(echo -n "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS" | base64 -w 0)
-echo "Port 80 (Base64):"
-echo "$CONFIG_80_B64"
+echo -e "${YELLOW}━━━ Port 80 (HTTP WebSocket) ━━━${NC}"
+echo "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
 echo ""
 
-# Port 8080
-CONFIG_8080_B64=$(echo -n "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS" | base64 -w 0)
-echo "Port 8080 (Base64):"
-echo "$CONFIG_8080_B64"
+echo -e "${YELLOW}━━━ Port 8080 (Alternative WebSocket) ━━━${NC}"
+echo "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
 echo ""
 
-# Port 8443
-CONFIG_8443_B64=$(echo -n "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS" | base64 -w 0)
-echo "Port 8443 (Base64):"
-echo "$CONFIG_8443_B64"
+echo -e "${YELLOW}━━━ Port 8443 (WebSocket + TLS) ━━━${NC}"
+echo "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS"
 echo ""
 
-# Port 443
-CONFIG_443_B64=$(echo -n "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS" | base64 -w 0)
-echo "Port 443 (Base64):"
-echo "$CONFIG_443_B64"
+echo -e "${GREEN}━━━ Port 443 (WebSocket + TLS - RECOMMENDED) ━━━${NC}"
+echo "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
 echo ""
 
 # Try to generate QR codes if qrencode is available
 if command -v qrencode &> /dev/null; then
-    echo "2️⃣ QR Codes:"
+    echo "2️⃣ Generating QR Codes..."
     echo ""
     
     mkdir -p qrcodes
     
-    qrencode -o qrcodes/port80.png "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
-    qrencode -o qrcodes/port8080.png "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
-    qrencode -o qrcodes/port8443.png "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS"
-    qrencode -o qrcodes/port443.png "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
+    echo "Creating QR codes for all ports..."
+    qrencode -t PNG -s 10 -o qrcodes/port80.png "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
+    qrencode -t PNG -s 10 -o qrcodes/port8080.png "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
+    qrencode -t PNG -s 10 -o qrcodes/port8443.png "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS"
+    qrencode -t PNG -s 10 -o qrcodes/port443.png "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
     
-    echo "✓ QR codes generated in: qrcodes/"
-    ls -la qrcodes/
+    # Generate ASCII QR codes for terminal display
+    echo ""
+    echo -e "${GREEN}Port 443 (Recommended) - Scan with your phone:${NC}"
+    qrencode -t ANSIUTF8 "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
+    echo ""
+    
+    echo -e "${GREEN}✓ PNG QR codes saved to: qrcodes/${NC}"
+    echo "   port80.png, port8080.png, port8443.png, port443.png"
     echo ""
 else
-    echo "2️⃣ QR Codes:"
-    echo "To generate QR codes, install qrencode: sudo apt-get install qrencode"
-    echo "Or use online QR code generator with the connection strings above"
+    echo "2️⃣ QR Code Generation:"
     echo ""
-fi
+    echo "Installing qrencode..."
+    if sudo apt-get install -y qrencode > /dev/null 2>&1; then
+        mkdir -p qrcodes
+        qrencode -t PNG -s 10 -o qrcodes/port80.png "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
+        qrencode -t PNG -s 10 -o qrcodes/port8080.png "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
+        qrencode -t PNG -s 10 -o q& Paste to Client):
 
-# Save all configs to a file
-cat > client-configs.txt << EOF
-═══════════════════════════════════════════════════════════════
-XRAY SERVER - CLIENT CONFIGURATIONS
-Generated: $(date)
-Domain: $DOMAIN
-═══════════════════════════════════════════════════════════════
-
-📱 VLESS CONNECTION STRINGS (Copy to client):
-
-Port 80 (HTTP WebSocket):
+━━━ Port 80 (HTTP WebSocket) ━━━
 vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS
 
+━━━ Port 8080 (Alternative WebSocket) ━━━
+vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS
+
+━━━ Port 8443 (WebSocket + TLS) ━━━
+vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS
+
+━━━ Port 443 (WebSocket + TLS - RECOMMENDED) ✓ ━━━
+vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS
 Port 8080 (Alternative WebSocket):
 vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS
 
