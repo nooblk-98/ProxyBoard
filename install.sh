@@ -452,5 +452,151 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Installation time: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
+
+# ============================================================================
+# PHASE 10: GENERATE QR CODES AND IMPORT CONFIGS
+# ============================================================================
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}Client Import Methods${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Generate base64 encoded configs
+echo "1️⃣ Base64 Encoded Configs (for direct import):"
+echo ""
+
+# Port 80
+CONFIG_80_B64=$(echo -n "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS" | base64 -w 0)
+echo "Port 80 (Base64):"
+echo "$CONFIG_80_B64"
+echo ""
+
+# Port 8080
+CONFIG_8080_B64=$(echo -n "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS" | base64 -w 0)
+echo "Port 8080 (Base64):"
+echo "$CONFIG_8080_B64"
+echo ""
+
+# Port 8443
+CONFIG_8443_B64=$(echo -n "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS" | base64 -w 0)
+echo "Port 8443 (Base64):"
+echo "$CONFIG_8443_B64"
+echo ""
+
+# Port 443
+CONFIG_443_B64=$(echo -n "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS" | base64 -w 0)
+echo "Port 443 (Base64):"
+echo "$CONFIG_443_B64"
+echo ""
+
+# Try to generate QR codes if qrencode is available
+if command -v qrencode &> /dev/null; then
+    echo "2️⃣ QR Codes:"
+    echo ""
+    
+    mkdir -p qrcodes
+    
+    qrencode -o qrcodes/port80.png "vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS"
+    qrencode -o qrcodes/port8080.png "vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS"
+    qrencode -o qrcodes/port8443.png "vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS"
+    qrencode -o qrcodes/port443.png "vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS"
+    
+    echo "✓ QR codes generated in: qrcodes/"
+    ls -la qrcodes/
+    echo ""
+else
+    echo "2️⃣ QR Codes:"
+    echo "To generate QR codes, install qrencode: sudo apt-get install qrencode"
+    echo "Or use online QR code generator with the connection strings above"
+    echo ""
+fi
+
+# Save all configs to a file
+cat > client-configs.txt << EOF
+═══════════════════════════════════════════════════════════════
+XRAY SERVER - CLIENT CONFIGURATIONS
+Generated: $(date)
+Domain: $DOMAIN
+═══════════════════════════════════════════════════════════════
+
+📱 VLESS CONNECTION STRINGS (Copy to client):
+
+Port 80 (HTTP WebSocket):
+vless://${UUID_80}@${DOMAIN}:80?path=/ws&type=ws#Port80-WS
+
+Port 8080 (Alternative WebSocket):
+vless://${UUID_8080}@${DOMAIN}:8080?path=/ws8080&type=ws#Port8080-WS
+
+Port 8443 (WebSocket + TLS):
+vless://${UUID_8443}@${DOMAIN}:8443?path=/ws8443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port8443-TLS-WS
+
+Port 443 (WebSocket + TLS - RECOMMENDED) ✓:
+vless://${UUID_443}@${DOMAIN}:443?path=/ws443&security=tls&type=ws&sni=${DOMAIN}&host=${DOMAIN}#Port443-TLS-WS
+
+═══════════════════════════════════════════════════════════════
+
+🔗 BASE64 ENCODED CONFIGS (for import):
+
+Port 80:
+$CONFIG_80_B64
+
+Port 8080:
+$CONFIG_8080_B64
+
+Port 8443:
+$CONFIG_8443_B64
+
+Port 443 (RECOMMENDED):
+$CONFIG_443_B64
+
+═══════════════════════════════════════════════════════════════
+
+📲 CLIENT APPLICATIONS:
+
+Compatible with:
+✓ V2RayN / V2RayNG (Windows/Android)
+✓ Clash / ClashX / ClashMeta (Multi-platform)
+✓ Shadowrocket (iOS)
+✓ Quantumult X (iOS)
+✓ Qv2ray (Multi-platform)
+✓ Any VLESS-compatible client
+
+═══════════════════════════════════════════════════════════════
+
+🔐 SECURITY NOTES:
+
+- Use Port 443 for encrypted connections (HTTPS)
+- Keep connection strings private
+- UUIDs act as passwords - don't share publicly
+- Change UUIDs periodically for security
+- Monitor server logs regularly
+
+═══════════════════════════════════════════════════════════════
+
+📋 IMPORT INSTRUCTIONS:
+
+V2RayN/V2RayNG:
+1. Copy connection string (starting with 'vless://')
+2. Open app → Subscription → Add → Paste
+3. Or scan QR code if available
+
+Clash:
+1. Add config to yaml under 'proxies' section
+2. Or copy connection string to clipboard
+3. App will auto-detect VLESS format
+
+Shadowrocket:
+1. Copy connection string
+2. Tap '+' → Paste
+3. Or scan QR code
+
+═══════════════════════════════════════════════════════════════
+
+Generated: $(date '+%Y-%m-%d %H:%M:%S')
+EOF
+
+echo -e "${GREEN}✓ All configs saved to: client-configs.txt${NC}"
+echo ""
+
 echo -e "${GREEN}✨ Your Xray server is ready to use!${NC}"
 echo ""
