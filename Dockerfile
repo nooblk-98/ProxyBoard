@@ -7,12 +7,12 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     certbot \
     openssl \
-    systemctl \
+    bash \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Xray-core
-RUN bash <(curl -Ls https://raw.githubusercontent.com/XTLS/Xray-install/main/install-release.sh)
+RUN /bin/bash -c "bash <(curl -Ls https://raw.githubusercontent.com/XTLS/Xray-install/main/install-release.sh)"
 
 # Create directories for configurations and certificates
 RUN mkdir -p /etc/xray /certs /var/log/xray
