@@ -121,9 +121,10 @@ def get_sys_info() -> dict:
 
 _last_net_io = None
 _last_net_time = None
+_last_speeds = {"up": 0.0, "down": 0.0}
 
 def get_net_speed() -> dict:
-    global _last_net_io, _last_net_time
+    global _last_net_io, _last_net_time, _last_speeds
     up_speed = 0.0
     down_speed = 0.0
     import platform
@@ -145,11 +146,20 @@ def get_net_speed() -> dict:
             now = time.time()
             if _last_net_time is not None and _last_net_io is not None:
                 elapsed = now - _last_net_time
-                if elapsed > 0:
+                if elapsed > 0.5:  # Only calculate if at least 0.5 seconds have passed
                     down_speed = (rx_bytes - _last_net_io[0]) / elapsed
                     up_speed = (tx_bytes - _last_net_io[1]) / elapsed
+                    # Apply smoothing - average with last reading (0.6 new, 0.4 old)
+                    down_speed = (down_speed * 0.6) + (_last_speeds["down"] * 0.4)
+                    up_speed = (up_speed * 0.6) + (_last_speeds["up"] * 0.4)
+                else:
+                    # Use last reading if interval too small
+                    down_speed = _last_speeds["down"]
+                    up_speed = _last_speeds["up"]
             _last_net_io = (rx_bytes, tx_bytes)
             _last_net_time = now
+            _last_speeds["up"] = up_speed
+            _last_speeds["down"] = down_speed
         except Exception:
             pass
             

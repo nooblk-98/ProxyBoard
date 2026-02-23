@@ -574,7 +574,7 @@
 
     if (document.getElementById('trafficChart')) {
       initChart();
-      setInterval(pollStatus, 1000);
+      setInterval(pollStatus, 3000);  // Poll every 3 seconds for stable readings
     }
 
     // Tab Switching
