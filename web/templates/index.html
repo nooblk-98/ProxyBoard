@@ -472,81 +472,99 @@
     const trafficLabels = Array(maxDataPoints).fill('');
     const upData = Array(maxDataPoints).fill(0);
     const downData = Array(maxDataPoints).fill(0);
-    let cpuGaugeChart, memGaugeChart, uploadGaugeChart, downloadGaugeChart;
     const gaugeValues = { cpu: 0, mem: 0, upload: 0, download: 0 };
+    const gaugeCharts = { cpu: null, mem: null, upload: null, download: null };
 
-    function createGaugeChart(canvasId, color, initialValue = 0) {
-      const ctx = document.getElementById(canvasId).getContext('2d');
+    function drawSegmentedGauge(canvasId, value, color, label) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = 60;
+      const segmentCount = 24;
+      const segmentAngle = (360 / segmentCount) * (Math.PI / 180);
+      const segmentWidth = (Math.PI * 2) / segmentCount * 0.85; // 85% of space for segment, 15% for gap
       
-      // Plugin to draw text in center
-      const centerTextPlugin = {
-        id: 'centerText',
-        afterDatasetsDraw(chart) {
-          const width = chart.width;
-          const height = chart.height;
-          const ctx = chart.ctx;
-          
-          // Get the value based on canvas id
-          let displayValue = '0%';
-          if (canvasId === 'cpuGauge') displayValue = gaugeValues.cpu.toFixed(1) + '%';
-          else if (canvasId === 'memGauge') displayValue = gaugeValues.mem.toFixed(1) + '%';
-          else if (canvasId === 'uploadGauge') displayValue = gaugeValues.upload.toFixed(1) + ' KB/s';
-          else if (canvasId === 'downloadGauge') displayValue = gaugeValues.download.toFixed(1) + ' KB/s';
-          
-          ctx.restore();
-          const fontSize = (height / 200).toFixed(2);
-          ctx.font = fontSize + 'em sans-serif';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.87)';
-          
-          const text = displayValue;
-          const textX = Math.round((width - ctx.measureText(text).width) / 2);
-          const textY = height / 2;
-          
-          ctx.fillText(text, textX, textY);
-          ctx.save();
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw segments
+      const filledSegments = Math.ceil((value / 100) * segmentCount);
+      
+      for (let i = 0; i < segmentCount; i++) {
+        const angle = (i * segmentAngle) - Math.PI / 2;
+        
+        // Determine color based on fill
+        if (i < filledSegments) {
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 8;
+        } else {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.shadowColor = 'transparent';
         }
-      };
+        
+        // Draw segment as a small bar/rectangle around circle
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle);
+        ctx.fillRect(radius - 8, -3, 8, 6);
+        ctx.restore();
+      }
       
-      return new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          datasets: [{
-            data: [initialValue, 100 - initialValue],
-            backgroundColor: [color, 'rgba(255, 255, 255, 0.1)'],
-            borderColor: ['transparent', 'transparent'],
-            borderWidth: 0,
-            circumference: 360,
-            rotation: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          animation: { duration: 300 },
-          plugins: {
-            tooltip: { enabled: false },
-            legend: { display: false }
-          }
-        },
-        plugins: [centerTextPlugin]
-      });
+      // Draw center circle
+      ctx.fillStyle = 'var(--mdc-theme-surface)';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 45, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 45, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Draw text in center
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.87)';
+      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      let displayValue = value.toFixed(1);
+      if (canvasId === 'uploadGauge' || canvasId === 'downloadGauge') {
+        displayValue += ' KB/s';
+      } else {
+        displayValue += '%';
+      }
+      
+      ctx.fillText(displayValue, centerX, centerY);
+      
+      ctx.shadowColor = 'transparent';
     }
 
-    function updateGauge(chart, value, type) {
-      if (chart && chart.data && chart.data.datasets[0]) {
-        chart.data.datasets[0].data = [Math.min(value, 100), Math.max(0, 100 - value)];
-        gaugeValues[type] = value;
-        chart.update();
+    function updateGauge(canvasId, value, type) {
+      gaugeValues[type] = value;
+      
+      // Determine color based on type
+      let color;
+      switch(type) {
+        case 'cpu': color = 'rgba(255, 152, 0, 1)'; break;
+        case 'mem': color = 'rgba(76, 175, 80, 1)'; break;
+        case 'upload': color = 'rgba(187, 134, 252, 1)'; break;
+        case 'download': color = 'rgba(3, 218, 198, 1)'; break;
+        default: color = 'rgba(187, 134, 252, 1)';
       }
+      
+      drawSegmentedGauge(canvasId, value, color, type);
     }
 
     function initChart() {
-      // Initialize gauges
-      cpuGaugeChart = createGaugeChart('cpuGauge', 'rgba(255, 152, 0, 1)', 0);
-      memGaugeChart = createGaugeChart('memGauge', 'rgba(76, 175, 80, 1)', 0);
-      uploadGaugeChart = createGaugeChart('uploadGauge', 'rgba(187, 134, 252, 1)', 0);
-      downloadGaugeChart = createGaugeChart('downloadGauge', 'rgba(3, 218, 198, 1)', 0);
+      // Initialize gauges with initial draw
+      updateGauge('cpuGauge', 0, 'cpu');
+      updateGauge('memGauge', 0, 'mem');
+      updateGauge('uploadGauge', 0, 'upload');
+      updateGauge('downloadGauge', 0, 'download');
 
       // Initialize traffic chart
       const ctx = document.getElementById('trafficChart').getContext('2d');
@@ -610,11 +628,11 @@
         }
 
         // Update gauges
-        updateGauge(cpuGaugeChart, Math.min(cpuValue, 100), 'cpu');
-        updateGauge(memGaugeChart, memValue, 'mem');
+        updateGauge('cpuGauge', Math.min(cpuValue, 100), 'cpu');
+        updateGauge('memGauge', memValue, 'mem');
         // For upload/download, show actual KB/s values (not normalized)
-        updateGauge(uploadGaugeChart, Math.min((data.up_raw / 100), 100), 'upload');
-        updateGauge(downloadGaugeChart, Math.min((data.down_raw / 100), 100), 'download');
+        updateGauge('uploadGauge', Math.min((data.up_raw / 100), 100), 'upload');
+        updateGauge('downloadGauge', Math.min((data.down_raw / 100), 100), 'download');
 
         // Update Chart
         if (trafficChart) {
