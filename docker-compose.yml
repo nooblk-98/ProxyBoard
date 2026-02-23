@@ -5,12 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: xray-web
     restart: unless-stopped
-    ports:
-      - "8088:8088"
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-      - "8443:8443"
+    network_mode: host
     environment:
       - UI_PORT=8088
       - XRAY_DOMAIN=example.com

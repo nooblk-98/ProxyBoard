@@ -349,41 +349,80 @@ a {
 
 /* Configurations Grid */
 .config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .config-card {
-  padding: 20px;
-  transition: box-shadow 0.2s;
-  border-top: 4px solid transparent;
+  padding: 12px 16px;
+  background-color: var(--mdc-theme-surface-2);
+  transition: box-shadow 0.2s, background-color 0.2s;
+  border-radius: 8px;
+  border-left: 4px solid transparent;
 }
 
 .config-card--active {
-  border-top-color: var(--mdc-theme-success);
+  border-left-color: var(--mdc-theme-success);
 }
 
 .config-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
+  width: 100%;
+}
+
+.config-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.drag-indicator-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mdc-theme-text-disabled-on-background);
+  cursor: grab;
+}
+
+.drag-indicator-box i {
+  font-size: 24px;
+}
+
+.config-info {
+  display: flex;
+  flex-direction: column;
 }
 
 .config-title {
-  margin: 0 0 4px;
-  font-size: 1.25rem;
+  margin: 0 0 2px;
+  font-size: 1rem;
   font-weight: 500;
 }
 
 .config-meta {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--mdc-theme-text-secondary-on-background);
+}
+
+.config-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-form {
+  display: inline-flex;
+  margin: 0;
 }
 
 .config-shares {
   margin-top: 16px;
+  border-top: 1px solid var(--mdc-border-color);
+  padding-top: 16px;
 }
 
 .divider {

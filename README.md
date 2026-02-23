@@ -4,6 +4,14 @@ Run Xray with a built-in web UI that edits `config.json`, restarts the server, a
 
 ## Quick start
 
+1. Edit `docker-compose.yml` and set your domain:
+```yaml
+environment:
+  - UI_PORT=8088
+  - XRAY_DOMAIN=yourdomain.com
+```
+
+2. Start the server:
 ```bash
 docker compose up -d --build
 ```
@@ -26,12 +34,12 @@ A Docker volume named `xray-data` stores:
 - `/data/certs/`
 - `/data/logs/`
 
-## Optional environment variables
+## Configuration
 
-You can set these in `docker-compose.yml` if desired:
+Edit these in `docker-compose.yml` under `environment`:
 
-- `XRAY_DOMAIN` (default: `example.com`)
-- `UI_PORT` (default: `8088`)
+- `XRAY_DOMAIN` - Your domain name (default: `example.com`)
+- `UI_PORT` - Web UI port (default: `8088`)
 
 ## Notes
 

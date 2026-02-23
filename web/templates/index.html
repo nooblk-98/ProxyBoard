@@ -137,29 +137,48 @@
             {% for item in configs %}
             <div class="mdc-card config-card {{ 'config-card--active' if item.enabled else '' }}">
               <div class="config-header">
-                <div>
-                  <h6 class="config-title">{{ item.name }}</h6>
-                  <div class="config-meta">{{ summary(item) }}</div>
+                <div class="config-header-left">
+                  <div class="drag-indicator-box">
+                    <i class="material-icons">drag_indicator</i>
+                  </div>
+                  <div class="config-info">
+                    <h6 class="config-title">{{ item.name }}</h6>
+                    <div class="config-meta">{{ summary(item) }}</div>
+                  </div>
                 </div>
-                <form method="post" action="/toggle/{{ item.id }}" class="toggle-form">
-                  <label class="mdc-switch">
-                    <input type="checkbox" class="mdc-switch__native-control" role="switch"
-                      onChange="this.form.submit()" {% if item.enabled %}checked{% endif %}>
-                    <div class="mdc-switch__background">
-                      <div class="mdc-switch__knob"></div>
-                    </div>
-                  </label>
-                </form>
+
+                <div class="config-header-right">
+                  <form method="post" action="/toggle/{{ item.id }}" class="inline-form">
+                    <label class="mdc-switch">
+                      <input type="checkbox" class="mdc-switch__native-control" role="switch"
+                        onChange="this.form.submit()" {% if item.enabled %}checked{% endif %}>
+                      <div class="mdc-switch__background">
+                        <div class="mdc-switch__knob"></div>
+                      </div>
+                    </label>
+                  </form>
+
+                  <a href="/?edit={{ item.id }}#configs" class="mdc-icon-button text-muted" title="Edit">
+                    <i class="material-icons">edit</i>
+                  </a>
+
+                  <form method="post" action="/delete/{{ item.id }}" class="inline-form"
+                    onsubmit="return confirm('Delete this config?');">
+                    <button type="submit" class="mdc-icon-button error-text" title="Delete">
+                      <i class="material-icons">delete</i>
+                    </button>
+                  </form>
+                </div>
               </div>
 
               {% if item.enabled and item.links %}
               <div class="config-shares">
-                <div class="divider"></div>
                 <h6 class="share-title">Share Access</h6>
                 {% for link in item.links %}
                 <div class="share-item">
                   {% if link.qr %}
-                  <img src="{{ link.qr }}" class="share-qr" alt="QR" />
+                  <img src="{{ link.qr }}" class="share-qr" style="cursor: pointer;" alt="QR" title="Click to enlarge"
+                    onclick="openQrModal('{{ link.qr }}')" />
                   {% endif %}
                   <div class="share-details">
                     <div class="share-label">{{ link.label }}</div>
@@ -174,12 +193,6 @@
                 {% endfor %}
               </div>
               {% endif %}
-
-              <div class="config-actions">
-                <a href="/?edit={{ item.id }}#configs" class="mdc-button mdc-button--outlined">
-                  <span class="mdc-button__label">Edit Settings</span>
-                </a>
-              </div>
             </div>
             {% endfor %}
             {% if not configs %}
@@ -259,96 +272,105 @@
                 <option value="vmess" {% if form.protocol=='vmess' %}selected{% endif %}>VMESS</option>
               </select>
             </div>
-          </div>
 
-          <div class="divider"></div>
-          <div class="form-section-header">
-            <h6 class="form-section-title">WebSocket (No TLS)</h6>
-            <label class="mdc-switch">
-              <input type="checkbox" class="mdc-switch__native-control" name="ws_enabled" {% if form.ws_enabled
-                %}checked{% endif %}>
-              <div class="mdc-switch__background">
-                <div class="mdc-switch__knob"></div>
-              </div>
-              <span class="switch-label">Enable</span>
-            </label>
-          </div>
-
-          <div class="form-grid">
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="number" class="mdc-text-field__input" name="ws_port" value="{{ form.ws_port }}">
-              <span class="mdc-floating-label">Port</span>
-            </label>
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="ws_path" value="{{ form.ws_path }}">
-              <span class="mdc-floating-label">Path</span>
-            </label>
-            <div class="input-with-button span-2">
-              <label class="mdc-text-field mdc-text-field--outlined flex-1">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="ws_uuid" value="{{ form.ws_uuid }}">
-                <span class="mdc-floating-label">UUID</span>
-              </label>
-              <button type="button" class="mdc-button mdc-button--outlined"
-                onclick="genUuid('ws_uuid')">Generate</button>
+            <div class="mdc-select mdc-select--outlined">
+              <label>Transport</label>
+              <select class="native-select" name="network_security" onchange="toggleTransport()">
+                <option value="tls" {% if form.tls_enabled %}selected{% endif %}>WebSocket + TLS</option>
+                <option value="ws" {% if form.ws_enabled and not form.tls_enabled %}selected{% endif %}>WebSocket (No
+                  TLS)</option>
+              </select>
             </div>
-            <label class="mdc-text-field mdc-text-field--outlined span-2">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="ws_email" value="{{ form.ws_email }}">
-              <span class="mdc-floating-label">Email Label</span>
-            </label>
           </div>
 
-          <div class="divider"></div>
-          <div class="form-section-header">
-            <h6 class="form-section-title">WebSocket + TLS</h6>
-            <label class="mdc-switch">
-              <input type="checkbox" class="mdc-switch__native-control" name="tls_enabled" {% if form.tls_enabled
-                %}checked{% endif %}>
-              <div class="mdc-switch__background">
-                <div class="mdc-switch__knob"></div>
-              </div>
-              <span class="switch-label">Enable</span>
-            </label>
-          </div>
-
-          <div class="form-grid">
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="number" class="mdc-text-field__input" name="tls_port" value="{{ form.tls_port }}">
-              <span class="mdc-floating-label">Port</span>
-            </label>
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="tls_path" value="{{ form.tls_path }}">
-              <span class="mdc-floating-label">Path</span>
-            </label>
-            <div class="input-with-button span-2">
-              <label class="mdc-text-field mdc-text-field--outlined flex-1">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_uuid" value="{{ form.tls_uuid }}">
-                <span class="mdc-floating-label">UUID</span>
-              </label>
-              <button type="button" class="mdc-button mdc-button--outlined"
-                onclick="genUuid('tls_uuid')">Generate</button>
+          <div id="ws_section" style="{% if form.tls_enabled %}display: none;{% endif %}">
+            <div class="divider"></div>
+            <div class="form-section-header">
+              <h6 class="form-section-title">WebSocket (No TLS) Settings</h6>
             </div>
-            <label class="mdc-text-field mdc-text-field--outlined span-2">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="tls_email" value="{{ form.tls_email }}">
-              <span class="mdc-floating-label">Email Label</span>
-            </label>
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="tls_cert" value="{{ form.tls_cert }}">
-              <span class="mdc-floating-label">Cert Path</span>
-            </label>
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="tls_key" value="{{ form.tls_key }}">
-              <span class="mdc-floating-label">Key Path</span>
-            </label>
+
+            <div class="form-grid">
+              <label class="mdc-text-field mdc-text-field--outlined span-2">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="ws_host"
+                  value="{{ form.ws_host or form.domain }}">
+                <span class="mdc-floating-label">WS Host</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="number" class="mdc-text-field__input" name="ws_port" value="{{ form.ws_port }}">
+                <span class="mdc-floating-label">Port</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="ws_path" value="{{ form.ws_path }}">
+                <span class="mdc-floating-label">Path</span>
+              </label>
+              <div class="input-with-button span-2">
+                <label class="mdc-text-field mdc-text-field--outlined flex-1">
+                  <span class="mdc-notched-outline"></span>
+                  <input type="text" class="mdc-text-field__input" name="ws_uuid" value="{{ form.ws_uuid }}">
+                  <span class="mdc-floating-label">UUID</span>
+                </label>
+                <button type="button" class="mdc-button mdc-button--outlined"
+                  onclick="genUuid('ws_uuid')">Generate</button>
+              </div>
+              <label class="mdc-text-field mdc-text-field--outlined span-2">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="ws_email" value="{{ form.ws_email }}">
+                <span class="mdc-floating-label">Email Label</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="tls_section" style="{% if form.ws_enabled and not form.tls_enabled %}display: none;{% endif %}">
+            <div class="divider"></div>
+            <div class="form-section-header">
+              <h6 class="form-section-title">WebSocket + TLS Settings</h6>
+            </div>
+
+            <div class="form-grid">
+              <label class="mdc-text-field mdc-text-field--outlined span-2">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_host"
+                  value="{{ form.tls_host or form.domain }}">
+                <span class="mdc-floating-label">TLS Host / SNI</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="number" class="mdc-text-field__input" name="tls_port" value="{{ form.tls_port }}">
+                <span class="mdc-floating-label">Port</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_path" value="{{ form.tls_path }}">
+                <span class="mdc-floating-label">Path</span>
+              </label>
+              <div class="input-with-button span-2">
+                <label class="mdc-text-field mdc-text-field--outlined flex-1">
+                  <span class="mdc-notched-outline"></span>
+                  <input type="text" class="mdc-text-field__input" name="tls_uuid" value="{{ form.tls_uuid }}">
+                  <span class="mdc-floating-label">UUID</span>
+                </label>
+                <button type="button" class="mdc-button mdc-button--outlined"
+                  onclick="genUuid('tls_uuid')">Generate</button>
+              </div>
+              <label class="mdc-text-field mdc-text-field--outlined span-2">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_email" value="{{ form.tls_email }}">
+                <span class="mdc-floating-label">Email Label</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_cert" value="{{ form.tls_cert }}">
+                <span class="mdc-floating-label">Cert Path</span>
+              </label>
+              <label class="mdc-text-field mdc-text-field--outlined">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_key" value="{{ form.tls_key }}">
+                <span class="mdc-floating-label">Key Path</span>
+              </label>
+            </div>
           </div>
         </form>
       </div>
@@ -359,6 +381,19 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- QR Modal -->
+  <div class="mdc-dialog-scrim" id="qr-modal-scrim" onclick="closeQrModal(event)" style="display: none; z-index: 200;">
+    <div class="mdc-dialog" onclick="event.stopPropagation()"
+      style="max-width: 400px; text-align: center; padding: 24px;">
+      <h2 class="mdc-dialog__title" style="border-bottom: none; padding: 0 0 16px 0;">Share QR Code</h2>
+      <img id="qr-modal-img" src="" alt="Zoomed QR"
+        style="max-width: 100%; width: 256px; border-radius: 8px; margin: 0 auto; display: block;" />
+      <div class="mdc-dialog__actions" style="border-top: none; padding: 24px 0 0 0; justify-content: center;">
+        <button type="button" class="mdc-button mdc-button--outlined" onclick="closeQrModalDirect()">Close</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Tab Switching
@@ -437,12 +472,42 @@
     }
 
     function closeModal(event) {
-      if (event.target.classList.contains("mdc-dialog-scrim")) {
+      if (event.target.classList.contains("mdc-dialog-scrim") && event.target.id !== "qr-modal-scrim") {
         window.location.href = "/" + window.location.hash;
       }
     }
     function closeModalDirect() {
       window.location.href = "/" + window.location.hash;
+    }
+
+    function openQrModal(src) {
+      document.getElementById("qr-modal-img").src = src;
+      document.getElementById("qr-modal-scrim").style.display = "flex";
+    }
+
+    function closeQrModal(event) {
+      if (event.target.id === "qr-modal-scrim") {
+        document.getElementById("qr-modal-scrim").style.display = "none";
+      }
+    }
+
+    function closeQrModalDirect() {
+      document.getElementById("qr-modal-scrim").style.display = "none";
+    }
+
+    function toggleTransport() {
+      const select = document.querySelector('select[name="network_security"]');
+      const wsSection = document.getElementById('ws_section');
+      const tlsSection = document.getElementById('tls_section');
+      if (select && wsSection && tlsSection) {
+        if (select.value === 'ws') {
+          wsSection.style.display = 'block';
+          tlsSection.style.display = 'none';
+        } else {
+          wsSection.style.display = 'none';
+          tlsSection.style.display = 'block';
+        }
+      }
     }
   </script>
 </body>
