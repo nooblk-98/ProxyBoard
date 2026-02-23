@@ -483,104 +483,85 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      const centerX = W / 2;
-      const centerY = H / 2;
+      const cx = W / 2;
+      const cy = H / 2;
 
-      // Clear
       ctx.clearRect(0, 0, W, H);
 
       const totalTicks = 60;
       const filledTicks = Math.round((value / 100) * totalTicks);
-      const outerRadius = W / 2 - 6;
-      const isNetworkGauge = (canvasId === 'uploadGauge' || canvasId === 'downloadGauge');
+      const isNetwork = (canvasId === 'uploadGauge' || canvasId === 'downloadGauge');
+
+      // Ring geometry
+      const ringInner = 62;  // inner edge of empty tick
+      const ringOuter = 84;  // outer edge of filled tick
+      const shortOuter = 70;  // outer edge of empty tick  (shorter)
 
       for (let i = 0; i < totalTicks; i++) {
+        // Start at top (-90°) and go clockwise
         const angle = (i / totalTicks) * Math.PI * 2 - Math.PI / 2;
         const filled = i < filledTicks;
 
-        // Tick dimensions: tall & wide for filled, short & narrow for empty
-        const tickH = filled ? 10 : 4;
-        const tickW = filled ? 4 : 2;
-        const innerR = outerRadius - tickH;
-
-        const cosA = Math.cos(angle);
-        const sinA = Math.sin(angle);
-
-        // Tick start/end points (along the radius)
-        const x1 = centerX + innerR * cosA;
-        const y1 = centerY + innerR * sinA;
-        const x2 = centerX + outerRadius * cosA;
-        const y2 = centerY + outerRadius * sinA;
+        const innerR = ringInner;
+        const outerR = filled ? ringOuter : shortOuter;
+        const tickLen = outerR - innerR;
+        const tickW = filled ? 3.5 : 2;
 
         ctx.save();
-        ctx.translate((x1 + x2) / 2, (y1 + y2) / 2);
+        ctx.translate(cx, cy);
         ctx.rotate(angle);
+        // Along +X axis: draw rect from innerR to outerR, centred on axis
 
         if (filled) {
-          ctx.shadowColor = color;
-          ctx.shadowBlur = 10;
           ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 14;
+          ctx.fillRect(innerR, -tickW / 2, tickLen, tickW);
         } else {
-          ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.shadowColor = 'transparent';
+          ctx.fillStyle = 'rgba(255,255,255,0.10)';
+          ctx.fillRect(innerR, -tickW / 2, tickLen, tickW);
         }
-
-        const len = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        ctx.fillRect(-tickW / 2, -len / 2, tickW, len);
         ctx.restore();
       }
 
       ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
 
-      // Inner dark circle
-      const innerCircleR = outerRadius - 18;
+      // ── Inner dark filled circle ──────────────────────────────────────
       ctx.beginPath();
-      ctx.arc(centerX, centerY, innerCircleR, 0, Math.PI * 2);
+      ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
       ctx.fillStyle = '#1a1a2e';
       ctx.fill();
 
-      // Subtle inner border ring
+      // Subtle ring border
       ctx.beginPath();
-      ctx.arc(centerX, centerY, innerCircleR, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 1.5;
+      ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Center text -- big bold number
-      const numericStr = isNetworkGauge ? value.toFixed(1) : Math.round(value).toString();
-      const unitStr = isNetworkGauge ? ' KB/s' : '%';
+      // ── Center value text ─────────────────────────────────────────────
+      const numStr = isNetwork ? value.toFixed(1) : Math.round(value).toString();
+      const unitStr = isNetwork ? 'KB/s' : '%';
 
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
+      ctx.textBaseline = 'middle';
 
-      // Draw number
-      ctx.font = 'bold 28px "Roboto", sans-serif';
+      // Big bold number
+      ctx.font = 'bold 30px "Roboto", sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = color;
-      ctx.shadowBlur = 6;
-      const numWidth = ctx.measureText(numericStr).width;
+      ctx.shadowBlur = 10;
+      ctx.fillText(numStr, cx, cy - 8);
 
-      // Draw unit in smaller font beside the number
-      ctx.font = 'bold 14px "Roboto", sans-serif';
-      const unitWidth = ctx.measureText(unitStr).width;
-
-      const totalWidth = numWidth + unitWidth;
-      const startX = centerX - totalWidth / 2;
-
-      ctx.font = 'bold 28px "Roboto", sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 6;
-      ctx.fillText(numericStr, startX + numWidth / 2, centerY + 10);
-
-      ctx.font = 'bold 13px "Roboto", sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      // Smaller unit label below
+      ctx.font = '500 13px "Roboto", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.60)';
       ctx.shadowBlur = 0;
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(unitStr, startX + numWidth + unitWidth / 2, centerY + 10);
-
       ctx.shadowColor = 'transparent';
+      ctx.fillText(unitStr, cx, cy + 14);
     }
 
     function updateGauge(canvasId, value, type) {
