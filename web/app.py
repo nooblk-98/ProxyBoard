@@ -864,4 +864,10 @@ def bootstrap() -> None:
 
 if __name__ == "__main__":
     bootstrap()
-    app.run(host="0.0.0.0", port=UI_PORT, debug=False)
+    # Use SSL/TLS for web UI if certs exist
+    ssl_context = None
+    cert_file = CERT_DIR / "cert.pem"
+    key_file = CERT_DIR / "key.pem"
+    if cert_file.exists() and key_file.exists():
+        ssl_context = (str(cert_file), str(key_file))
+    app.run(host="0.0.0.0", port=UI_PORT, debug=False, ssl_context=ssl_context)

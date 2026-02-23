@@ -32,6 +32,6 @@ COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 80 443 8080 8443 8088
+EXPOSE 80 443 8080 8443 8088 8089
 
 ENTRYPOINT ["/entrypoint.sh"]
