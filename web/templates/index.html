@@ -264,179 +264,202 @@
     </div>
   </div>
 
-  <!-- MODAL -->
-  <div class="mdc-dialog-scrim" id="edit-modal-scrim" style="display: none;" onclick="closeModal(event)">
-    <div class="mdc-dialog" onclick="event.stopPropagation()">
-      <h2 class="mdc-dialog__title" id="edit-modal-title">
-        New Configuration
-      </h2>
-      <div class="mdc-dialog__content">
-        <form method="post" action="/save" id="configForm">
-          <input type="hidden" name="edit_id" value="{{ edit_id if edit_id != 'new' else '' }}" />
+  <!-- CONFIG MODAL -->
+  <div class="mdc-dialog-scrim" id="edit-modal-scrim" style="display:none;" onclick="closeModal(event)">
+    <div class="cfg-dialog" onclick="event.stopPropagation()">
 
-          <h6 class="form-section-title">General</h6>
-          <div class="form-grid">
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="name" value="{{ form.name }}">
-              <span class="mdc-floating-label">Config Name</span>
-            </label>
-
-            <label class="mdc-text-field mdc-text-field--outlined">
-              <span class="mdc-notched-outline"></span>
-              <input type="text" class="mdc-text-field__input" name="domain" value="{{ form.domain }}">
-              <span class="mdc-floating-label">Domain / SNI</span>
-            </label>
-
-            <div class="mdc-select mdc-select--outlined">
-              <label>Protocol</label>
-              <select class="native-select" name="protocol">
-                <option value="vless" {% if form.protocol=='vless' %}selected{% endif %}>VLESS</option>
-                <option value="vmess" {% if form.protocol=='vmess' %}selected{% endif %}>VMESS</option>
-              </select>
-            </div>
-
-            <div class="mdc-select mdc-select--outlined">
-              <label>Transport</label>
-              <select class="native-select" name="network_security" onchange="toggleTransport()">
-                <option value="tls" {% if form.tls_enabled %}selected{% endif %}>WebSocket + TLS</option>
-                <option value="ws" {% if form.ws_enabled and not form.tls_enabled %}selected{% endif %}>WebSocket (No
-                  TLS)</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="ws_section" style="{% if form.tls_enabled %}display: none;{% endif %}">
-            <div class="divider"></div>
-            <div class="form-section-header">
-              <h6 class="form-section-title">WebSocket (No TLS) Settings</h6>
-            </div>
-
-            <div class="form-grid">
-              <label class="mdc-text-field mdc-text-field--outlined span-2">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="ws_host"
-                  value="{{ form.ws_host or form.domain }}">
-                <span class="mdc-floating-label">WS Host</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="number" class="mdc-text-field__input" name="ws_port" value="{{ form.ws_port }}">
-                <span class="mdc-floating-label">Port</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="ws_path" value="{{ form.ws_path }}">
-                <span class="mdc-floating-label">Path</span>
-              </label>
-              <div class="input-with-button span-2">
-                <label class="mdc-text-field mdc-text-field--outlined flex-1">
-                  <span class="mdc-notched-outline"></span>
-                  <input type="text" class="mdc-text-field__input" name="ws_uuid" value="{{ form.ws_uuid }}">
-                  <span class="mdc-floating-label">UUID</span>
-                </label>
-                <button type="button" class="mdc-button mdc-button--outlined"
-                  onclick="genUuid('ws_uuid')">Generate</button>
-              </div>
-              <label class="mdc-text-field mdc-text-field--outlined span-2">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="ws_email" value="{{ form.ws_email }}">
-                <span class="mdc-floating-label">Email Label</span>
-              </label>
-            </div>
-          </div>
-
-          <div id="tls_section" style="{% if form.ws_enabled and not form.tls_enabled %}display: none;{% endif %}">
-            <div class="divider"></div>
-            <div class="form-section-header">
-              <h6 class="form-section-title">WebSocket + TLS Settings</h6>
-            </div>
-
-            <div class="form-grid">
-              <label class="mdc-text-field mdc-text-field--outlined span-2">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_host"
-                  value="{{ form.tls_host or form.domain }}">
-                <span class="mdc-floating-label">TLS Host / SNI</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="number" class="mdc-text-field__input" name="tls_port" value="{{ form.tls_port }}">
-                <span class="mdc-floating-label">Port</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_path" value="{{ form.tls_path }}">
-                <span class="mdc-floating-label">Path</span>
-              </label>
-              <div class="input-with-button span-2">
-                <label class="mdc-text-field mdc-text-field--outlined flex-1">
-                  <span class="mdc-notched-outline"></span>
-                  <input type="text" class="mdc-text-field__input" name="tls_uuid" value="{{ form.tls_uuid }}">
-                  <span class="mdc-floating-label">UUID</span>
-                </label>
-                <button type="button" class="mdc-button mdc-button--outlined"
-                  onclick="genUuid('tls_uuid')">Generate</button>
-              </div>
-              <label class="mdc-text-field mdc-text-field--outlined span-2">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_email" value="{{ form.tls_email }}">
-                <span class="mdc-floating-label">Email Label</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_cert" value="{{ form.tls_cert }}">
-                <span class="mdc-floating-label">Cert Path</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="tls_key" value="{{ form.tls_key }}">
-                <span class="mdc-floating-label">Key Path</span>
-              </label>
-            </div>
-
-            <div class="divider"></div>
-            <h6 class="form-section-title">TLS Advanced Settings</h6>
-            <div class="form-grid">
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <select class="mdc-text-field__input" name="fingerprint" style="appearance: none; cursor: pointer;">
-                  <option value="randomized" {% if form.fingerprint == 'randomized' %}selected{% endif %}>randomized</option>
-                  <option value="chrome" {% if form.fingerprint == 'chrome' %}selected{% endif %}>chrome</option>
-                  <option value="firefox" {% if form.fingerprint == 'firefox' %}selected{% endif %}>firefox</option>
-                  <option value="safari" {% if form.fingerprint == 'safari' %}selected{% endif %}>safari</option>
-                  <option value="edge" {% if form.fingerprint == 'edge' %}selected{% endif %}>edge</option>
-                </select>
-                <span class="mdc-floating-label">TLS Fingerprint</span>
-              </label>
-              <label class="mdc-text-field mdc-text-field--outlined">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="alpn" value="{{ form.alpn or 'h2,h3,http/1.1' }}"
-                  placeholder="h2,h3,http/1.1">
-                <span class="mdc-floating-label">ALPN Protocols (comma-separated)</span>
-              </label>
-            </div>
-
-            <div class="divider"></div>
-            <h6 class="form-section-title">DNS Configuration</h6>
-            <div class="form-grid">
-              <label class="mdc-text-field mdc-text-field--outlined span-2">
-                <span class="mdc-notched-outline"></span>
-                <input type="text" class="mdc-text-field__input" name="dns" value="{{ form.dns or '1.1.1.1' }}"
-                  placeholder="1.1.1.1">
-                <span class="mdc-floating-label">Remote DNS Server</span>
-              </label>
-            </div>
-          </div>
+      <!-- Header -->
+      <div class="cfg-dialog__header">
+        <div class="cfg-dialog__header-icon"><i class="material-icons">dns</i></div>
+        <h2 class="cfg-dialog__title" id="edit-modal-title">New Configuration</h2>
+        <button type="button" class="cfg-dialog__close" onclick="closeModalDirect()" aria-label="Close">
+          <i class="material-icons">close</i>
+        </button>
       </div>
+
+      <!-- Form wraps body + footer so submit button works -->
+      <form method="post" action="/save" id="configForm">
+        <input type="hidden" name="edit_id" value="{{ edit_id if edit_id != 'new' else '' }}" />
+
+        <div class="cfg-dialog__body">
+
+          <!-- General -->
+          <div class="cfg-section">
+            <div class="cfg-section__label"><i class="material-icons">tune</i> General</div>
+            <div class="cfg-grid cfg-grid--2">
+              <div class="cfg-field">
+                <label class="cfg-label">Config Name</label>
+                <input type="text" class="cfg-input" name="name" value="{{ form.name }}" placeholder="My VPN Config">
+              </div>
+              <div class="cfg-field">
+                <label class="cfg-label">Domain / SNI</label>
+                <input type="text" class="cfg-input" name="domain" value="{{ form.domain }}" placeholder="example.com">
+              </div>
+              <div class="cfg-field">
+                <label class="cfg-label">Protocol</label>
+                <div class="cfg-select-wrap">
+                  <select class="cfg-input cfg-select" name="protocol">
+                    <option value="vless" {% if form.protocol=='vless' %}selected{% endif %}>VLESS</option>
+                    <option value="vmess" {% if form.protocol=='vmess' %}selected{% endif %}>VMESS</option>
+                  </select>
+                  <i class="material-icons cfg-select-arrow">expand_more</i>
+                </div>
+              </div>
+              <div class="cfg-field">
+                <label class="cfg-label">Transport</label>
+                <div class="cfg-select-wrap">
+                  <select class="cfg-input cfg-select" name="network_security" onchange="toggleTransport()">
+                    <option value="tls" {% if form.tls_enabled %}selected{% endif %}>WebSocket + TLS</option>
+                    <option value="ws" {% if form.ws_enabled and not form.tls_enabled %}selected{% endif %}>WebSocket
+                      (No TLS)</option>
+                  </select>
+                  <i class="material-icons cfg-select-arrow">expand_more</i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WebSocket (No TLS) -->
+          <div id="ws_section" {% if form.tls_enabled %}style="display:none" {% endif %}>
+            <div class="cfg-section">
+              <div class="cfg-section__label"><i class="material-icons">http</i> WebSocket (No TLS)</div>
+              <div class="cfg-grid cfg-grid--2">
+                <div class="cfg-field cfg-field--full">
+                  <label class="cfg-label">WS Host</label>
+                  <input type="text" class="cfg-input" name="ws_host" value="{{ form.ws_host or form.domain }}"
+                    placeholder="example.com">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Port</label>
+                  <input type="number" class="cfg-input" name="ws_port" value="{{ form.ws_port }}" placeholder="80">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Path</label>
+                  <input type="text" class="cfg-input" name="ws_path" value="{{ form.ws_path }}" placeholder="/ws">
+                </div>
+                <div class="cfg-field cfg-field--full cfg-field--row">
+                  <div class="cfg-field" style="flex:1;margin:0">
+                    <label class="cfg-label">UUID</label>
+                    <input type="text" class="cfg-input cfg-mono" name="ws_uuid" value="{{ form.ws_uuid }}"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                  </div>
+                  <button type="button" class="cfg-gen-btn" onclick="genUuid('ws_uuid')">
+                    <i class="material-icons">autorenew</i> Generate
+                  </button>
+                </div>
+                <div class="cfg-field cfg-field--full">
+                  <label class="cfg-label">Email Label</label>
+                  <input type="text" class="cfg-input" name="ws_email" value="{{ form.ws_email }}"
+                    placeholder="user@example.com">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WebSocket + TLS -->
+          <div id="tls_section" {% if form.ws_enabled and not form.tls_enabled %}style="display:none" {% endif %}>
+            <div class="cfg-section">
+              <div class="cfg-section__label"><i class="material-icons">lock</i> WebSocket + TLS</div>
+              <div class="cfg-grid cfg-grid--2">
+                <div class="cfg-field cfg-field--full">
+                  <label class="cfg-label">TLS Host / SNI</label>
+                  <input type="text" class="cfg-input" name="tls_host" value="{{ form.tls_host or form.domain }}"
+                    placeholder="example.com">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Port</label>
+                  <input type="number" class="cfg-input" name="tls_port" value="{{ form.tls_port }}" placeholder="443">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Path</label>
+                  <input type="text" class="cfg-input" name="tls_path" value="{{ form.tls_path }}" placeholder="/wstls">
+                </div>
+                <div class="cfg-field cfg-field--full cfg-field--row">
+                  <div class="cfg-field" style="flex:1;margin:0">
+                    <label class="cfg-label">UUID</label>
+                    <input type="text" class="cfg-input cfg-mono" name="tls_uuid" value="{{ form.tls_uuid }}"
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                  </div>
+                  <button type="button" class="cfg-gen-btn" onclick="genUuid('tls_uuid')">
+                    <i class="material-icons">autorenew</i> Generate
+                  </button>
+                </div>
+                <div class="cfg-field cfg-field--full">
+                  <label class="cfg-label">Email Label</label>
+                  <input type="text" class="cfg-input" name="tls_email" value="{{ form.tls_email }}"
+                    placeholder="user@example.com">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Cert Path</label>
+                  <input type="text" class="cfg-input cfg-mono" name="tls_cert" value="{{ form.tls_cert }}"
+                    placeholder="/data/certs/cert.pem">
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">Key Path</label>
+                  <input type="text" class="cfg-input cfg-mono" name="tls_key" value="{{ form.tls_key }}"
+                    placeholder="/data/certs/key.pem">
+                </div>
+              </div>
+            </div>
+
+            <!-- TLS Advanced -->
+            <div class="cfg-section">
+              <div class="cfg-section__label"><i class="material-icons">fingerprint</i> TLS Advanced</div>
+              <div class="cfg-grid cfg-grid--2">
+                <div class="cfg-field">
+                  <label class="cfg-label">TLS Fingerprint</label>
+                  <div class="cfg-select-wrap">
+                    <select class="cfg-input cfg-select" name="fingerprint">
+                      <option value="randomized" {% if form.fingerprint=='randomized' %}selected{% endif %}>Randomized
+                      </option>
+                      <option value="chrome" {% if form.fingerprint=='chrome' %}selected{% endif %}>Chrome</option>
+                      <option value="firefox" {% if form.fingerprint=='firefox' %}selected{% endif %}>Firefox</option>
+                      <option value="safari" {% if form.fingerprint=='safari' %}selected{% endif %}>Safari</option>
+                      <option value="edge" {% if form.fingerprint=='edge' %}selected{% endif %}>Edge</option>
+                    </select>
+                    <i class="material-icons cfg-select-arrow">expand_more</i>
+                  </div>
+                </div>
+                <div class="cfg-field">
+                  <label class="cfg-label">ALPN Protocols</label>
+                  <input type="text" class="cfg-input" name="alpn" value="{{ form.alpn or 'h2,h3,http/1.1' }}"
+                    placeholder="h2,h3,http/1.1">
+                </div>
+              </div>
+            </div>
+
+            <!-- DNS -->
+            <div class="cfg-section">
+              <div class="cfg-section__label"><i class="material-icons">travel_explore</i> DNS Configuration</div>
+              <div class="cfg-grid cfg-grid--1">
+                <div class="cfg-field">
+                  <label class="cfg-label">Remote DNS Server</label>
+                  <input type="text" class="cfg-input" name="dns" value="{{ form.dns or '1.1.1.1' }}"
+                    placeholder="1.1.1.1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.cfg-dialog__body -->
+
+        <!-- Sticky footer -->
+        <div class="cfg-dialog__footer">
+          <button type="button" class="cfg-btn cfg-btn--ghost" onclick="closeModalDirect()">
+            <i class="material-icons">close</i> Cancel
+          </button>
+          <button type="submit" class="cfg-btn cfg-btn--primary">
+            <i class="material-icons">save</i> Save Config
+          </button>
+        </div>
+
       </form>
-    </div>
-    <div class="mdc-dialog__actions">
-      <button type="button" class="mdc-button" onclick="closeModalDirect()">Cancel</button>
-      <button type="submit" form="configForm" class="mdc-button mdc-button--raised mdc-button--primary">Save</button>
-    </div>
-  </div>
-  </div>
+    </div><!-- /.cfg-dialog -->
+  </div><!-- /#edit-modal-scrim -->
+
+
+
+
   <!-- QR Modal -->
   <div class="mdc-dialog-scrim" id="qr-modal-scrim" onclick="closeQrModal(event)" style="display: none; z-index: 200;">
     <div class="mdc-dialog" onclick="event.stopPropagation()"
