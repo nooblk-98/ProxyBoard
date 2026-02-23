@@ -22,7 +22,7 @@ RUN XRAY_VERSION=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/
     rm Xray-linux-64.zip && \
     chmod +x /usr/local/bin/xray
 
-RUN python3 -m pip install --no-cache-dir flask==3.0.3 qrcode==7.4.2 pillow==10.4.0
+RUN python3 -m pip install --no-cache-dir flask==3.0.3 qrcode==7.4.2 pillow==10.4.0 gunicorn==21.2.0
 
 RUN mkdir -p /opt/xray /opt/xray-web /data
 
