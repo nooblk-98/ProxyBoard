@@ -493,9 +493,9 @@
       const isNetwork = (canvasId === 'uploadGauge' || canvasId === 'downloadGauge');
 
       // Ring geometry
-      const ringInner = 62;  // inner edge of empty tick
-      const ringOuter = 84;  // outer edge of filled tick
-      const shortOuter = 70;  // outer edge of empty tick  (shorter)
+      const ringInner = 62;  // inner edge of all ticks
+      const ringOuter = 84;  // outer edge of filled ticks  (22px long)
+      const shortOuter = 79;  // outer edge of empty ticks   (17px long) — close in height
 
       for (let i = 0; i < totalTicks; i++) {
         // Start at top (-90°) and go clockwise
@@ -567,14 +567,14 @@
     function updateGauge(canvasId, value, type) {
       gaugeValues[type] = value;
 
-      // Determine color based on type
+      // Determine color based on type — vivid neon colors like reference image
       let color;
       switch (type) {
-        case 'cpu': color = 'rgba(255, 152, 0, 1)'; break;
-        case 'mem': color = 'rgba(76, 175, 80, 1)'; break;
-        case 'upload': color = 'rgba(187, 134, 252, 1)'; break;
-        case 'download': color = 'rgba(3, 218, 198, 1)'; break;
-        default: color = 'rgba(187, 134, 252, 1)';
+        case 'cpu': color = '#00ff88'; break;   // bright neon green
+        case 'mem': color = '#ff2d6f'; break;   // hot pink / magenta
+        case 'upload': color = '#bb86fc'; break;   // purple
+        case 'download': color = '#00cfff'; break;   // electric cyan-blue
+        default: color = '#00cfff';
       }
 
       drawSegmentedGauge(canvasId, value, color, type);
