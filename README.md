@@ -49,14 +49,7 @@ Manage multiple Xray configurations easily.
 - Self-signed TLS certs generated on first run in `/data/certs`
 - Port conflict detection between configs
 
-## Data persistence
 
-A Docker volume named `xray-data` stores:
-
-- `/data/config.json` - Main Xray configuration
-- `/data/configs.json` - Multiple config profiles
-- `/data/certs/` - SSL certificates
-- `/data/logs/` - Xray access and error logs
 
 ## Configuration
 
@@ -68,6 +61,4 @@ Edit these in `docker-compose.yml` under `environment`:
 ## Notes
 
 - Port `8088` is exposed for the web UI
-- Xray inbound ports (80, 443, 8080, 8443) can be configured per configuration
-- Replace the self-signed certs in `/data/certs` for production use
 - Developed by [nooblk](https://github.com/nooblk-98)
