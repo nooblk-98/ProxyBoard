@@ -1,285 +1,450 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Xray Web UI</title>
-    <link rel="stylesheet" href="/static/style.css" />
-  </head>
-  <body>
-    <div class="page">
-      <header class="header">
-        <div>
-          <div class="eyebrow">Xray Server</div>
-          <h1>Config Manager</h1>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Xray Material Dashboard</title>
+  <!-- Use Roboto font for Material Design -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="mdc-drawer">
+      <div class="mdc-drawer__header">
+        <h3 class="mdc-drawer__title">Xray Engine</h3>
+        <h6 class="mdc-drawer__subtitle">{{ status.domain }}</h6>
+      </div>
+      <div class="mdc-drawer__content">
+        <nav class="mdc-list">
+          <a class="mdc-list-item mdc-list-item--activated" href="#" data-target="dashboard">
+            <span class="mdc-list-item__ripple"></span>
+            <i class="material-icons mdc-list-item__graphic" aria-hidden="true">dashboard</i>
+            <span class="mdc-list-item__text">Dashboard</span>
+          </a>
+          <a class="mdc-list-item" href="#" data-target="configs">
+            <span class="mdc-list-item__ripple"></span>
+            <i class="material-icons mdc-list-item__graphic" aria-hidden="true">dns</i>
+            <span class="mdc-list-item__text">Configurations</span>
+          </a>
+          <a class="mdc-list-item" href="#" data-target="settings">
+            <span class="mdc-list-item__ripple"></span>
+            <i class="material-icons mdc-list-item__graphic" aria-hidden="true">settings</i>
+            <span class="mdc-list-item__text">Settings</span>
+          </a>
+        </nav>
+      </div>
+      <div class="drawer-footer">
+        <div class="status-chip {{ 'status-running' if status.running else 'status-stopped' }}">
+          <i class="material-icons">{{ 'check_circle' if status.running else 'error' }}</i>
+          {{ 'Engine Running' if status.running else 'Engine Stopped' }}
         </div>
-        <div class="status-pill {{ 'ok' if status.running else 'bad' }}">
-          {{ 'Running' if status.running else 'Stopped' }}
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="mdc-top-app-bar">
+        <div class="mdc-top-app-bar__row">
+          <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
+            <span class="mdc-top-app-bar__title" id="page-title">Dashboard</span>
+          </section>
         </div>
       </header>
 
-      {% if message %}
-      <div class="alert ok">{{ message }}</div>
-      {% endif %}
-      {% if error %}
-      <div class="alert bad">{{ error }}</div>
-      {% endif %}
-
-      <section class="grid">
-        <div class="card">
-          <div class="card-head">
-            <div class="label">Domain</div>
-            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
-          </div>
-          <div class="value">{{ status.domain }}</div>
+      <main class="main-content">
+        {% if message %}
+        <div class="mdc-snackbar mdc-snackbar--success">
+          <i class="material-icons">info</i> {{ message }}
         </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="label">Active Config</div>
-            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
-          </div>
-          <div class="value">{{ active.name if active else 'None' }}</div>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="label">Connection Status</div>
-            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
-          </div>
-          <div class="value">{{ summary(active) if active else 'Disabled' }}</div>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="label">Last Updated</div>
-            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
-          </div>
-          <div class="value">{{ status.config_mtime or 'N/A' }}</div>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <div class="label">PID</div>
-            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
-          </div>
-          <div class="value">{{ status.pid or 'N/A' }}</div>
-        </div>
-      </section>
-
-      <section class="card wide">
-        <div class="card-head">
-          <div class="label">Active Config</div>
-          {% if active %}<a class="btn ghost small" href="/?edit={{ active.id }}">Edit Config</a>{% endif %}
-        </div>
-        <div class="active-row">
-          <div>
-            <div class="config-name">{{ active.name if active else 'None' }}</div>
-            <div class="config-meta">{{ summary(active) if active else 'Disabled' }}</div>
-          </div>
-          <div class="config-actions">
-            <a class="btn primary" href="/new">Add New Config</a>
-          </div>
-        </div>
-        {% if not edit_id %}
-        <div class="note">Press Edit or Add New Config to change settings.</div>
         {% endif %}
-      </section>
-
-      <section class="card wide">
-        <div class="card-head">
-          <div class="label">All Configs</div>
-          <a class="btn ghost small" href="/new">Add New</a>
+        {% if error %}
+        <div class="mdc-snackbar mdc-snackbar--error">
+          <i class="material-icons">error</i> {{ error }}
         </div>
-        <div class="config-list">
-          {% for item in store.configs %}
-          <div class="config-row">
-            <div>
-              <div class="config-name">{{ item.name }}</div>
-              <div class="config-meta">{{ summary(item) }}</div>
+        {% endif %}
+
+        <!-- DASHBOARD SECTION -->
+        <section id="section-dashboard" class="content-section active">
+          <h5 class="section-title">Overview</h5>
+          <div class="mdc-layout-grid">
+            <div class="mdc-card mdc-card--outlined">
+              <div class="card-icon primary-text"><i class="material-icons">verified</i></div>
+              <div class="card-info">
+                <div class="card-subtitle">Xray Version</div>
+                <div class="card-title">{{ status.xray_version }}</div>
+              </div>
             </div>
-            <div class="config-actions">
-              <a class="btn ghost small" href="/?edit={{ item.id }}">Edit</a>
-              <form method="post" action="/activate/{{ item.id }}">
-                <button type="submit" class="btn {% if store.active_id == item.id %}primary{% endif %}">
-                  {% if store.active_id == item.id %}Active{% else %}Activate{% endif %}
-                </button>
-              </form>
+            <div class="mdc-card mdc-card--outlined">
+              <div class="card-icon {{ 'success-text' if active_count > 0 else 'warning-text' }}">
+                <i class="material-icons">wifi_tethering</i>
+              </div>
+              <div class="card-info">
+                <div class="card-subtitle">Active Connections</div>
+                <div class="card-title">{{ active_count }} Active Configurations</div>
+              </div>
+            </div>
+            <div class="mdc-card mdc-card--outlined">
+              <div class="card-icon info-text"><i class="material-icons">memory</i></div>
+              <div class="card-info">
+                <div class="card-subtitle">CPU Usage</div>
+                <div class="card-title">{{ status.sys_info.cpu if status.sys_info else '0.00' }}</div>
+              </div>
+            </div>
+            <div class="mdc-card mdc-card--outlined">
+              <div class="card-icon info-text"><i class="material-icons">storage</i></div>
+              <div class="card-info">
+                <div class="card-subtitle">Memory Usage</div>
+                <div class="card-title">{{ status.sys_info.mem if status.sys_info else '0.0%' }}</div>
+              </div>
             </div>
           </div>
-          {% endfor %}
-        </div>
-      </section>
 
-      <section class="card wide">
-        <div class="card-head">
-          <div class="label">Share Links</div>
-          {% if active %}<a class="btn ghost small" href="/?edit={{ active.id }}">Edit Config</a>{% endif %}
-        </div>
-        {% if active and links %}
-        <div class="share-list">
-          {% for link in links %}
-          <div class="share-row">
-            <div class="share-info">
-              <div class="config-name">{{ link.label }}</div>
-              <div class="share-url" data-url="{{ link.url }}">{{ link.url }}</div>
-              <button type="button" class="btn ghost" onclick="copyUrl(this)">Copy URL</button>
+          <h5 class="section-title">Transfer Speeds</h5>
+          <div class="mdc-layout-grid">
+            <div class="mdc-card speed-card">
+              <i class="material-icons primary-text">arrow_upward</i>
+              <div>
+                <div class="speed-value">{{ status.up_speed }}</div>
+                <div class="speed-label">Upload</div>
+              </div>
             </div>
-            {% if link.qr %}
-            <div class="share-qr">
-              <img src="{{ link.qr }}" alt="QR" />
+            <div class="mdc-card speed-card">
+              <i class="material-icons success-text">arrow_downward</i>
+              <div>
+                <div class="speed-value">{{ status.down_speed }}</div>
+                <div class="speed-label">Download</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CONFIGS SECTION -->
+        <section id="section-configs" class="content-section">
+          <div class="section-header">
+            <h5 class="section-title">Inbound Configurations</h5>
+            <a href="/?edit=new#configs" class="mdc-button mdc-button--raised mdc-button--primary">
+              <i class="material-icons mdc-button__icon">add</i>
+              <span class="mdc-button__label">Add New</span>
+            </a>
+          </div>
+
+          <div class="config-grid">
+            {% for item in configs %}
+            <div class="mdc-card config-card {{ 'config-card--active' if item.enabled else '' }}">
+              <div class="config-header">
+                <div>
+                  <h6 class="config-title">{{ item.name }}</h6>
+                  <div class="config-meta">{{ summary(item) }}</div>
+                </div>
+                <form method="post" action="/toggle/{{ item.id }}" class="toggle-form">
+                  <label class="mdc-switch">
+                    <input type="checkbox" class="mdc-switch__native-control" role="switch"
+                      onChange="this.form.submit()" {% if item.enabled %}checked{% endif %}>
+                    <div class="mdc-switch__background">
+                      <div class="mdc-switch__knob"></div>
+                    </div>
+                  </label>
+                </form>
+              </div>
+
+              {% if item.enabled and item.links %}
+              <div class="config-shares">
+                <div class="divider"></div>
+                <h6 class="share-title">Share Access</h6>
+                {% for link in item.links %}
+                <div class="share-item">
+                  {% if link.qr %}
+                  <img src="{{ link.qr }}" class="share-qr" alt="QR" />
+                  {% endif %}
+                  <div class="share-details">
+                    <div class="share-label">{{ link.label }}</div>
+                    <div class="share-url-container">
+                      <input type="text" readonly value="{{ link.url }}" class="copy-input mdc-text-field__input" />
+                      <button type="button" class="mdc-icon-button" onclick="copyUrl(this)" title="Copy URL">
+                        <i class="material-icons">content_copy</i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              <div class="config-actions">
+                <a href="/?edit={{ item.id }}#configs" class="mdc-button mdc-button--outlined">
+                  <span class="mdc-button__label">Edit Settings</span>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+            {% if not configs %}
+            <div class="empty-state">
+              <i class="material-icons">dns</i>
+              <p>No configurations found. Add one to get started.</p>
             </div>
             {% endif %}
           </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="note">No active links. Enable WS or WS + TLS to generate share links.</div>
-        {% endif %}
-      </section>
+        </section>
 
-      {% if edit_id %}
-      <div class="modal-backdrop" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-          <div class="modal-head">
-            <div>
-              <div class="label">Edit Config</div>
-              <div class="config-name">{{ form.name }}</div>
+        <!-- SETTINGS SECTION -->
+        <section id="section-settings" class="content-section">
+          <h5 class="section-title">System Settings</h5>
+
+          <div class="mdc-card settings-card">
+            <h6 class="settings-subtitle">Service Control</h6>
+            <div class="actions-row">
+              <form method="post" action="/restart">
+                <button type="submit" class="mdc-button mdc-button--raised mdc-button--warning">
+                  <i class="material-icons mdc-button__icon">restart_alt</i>
+                  <span class="mdc-button__label">Restart Engine</span>
+                </button>
+              </form>
+              <a class="mdc-button mdc-button--outlined" href="/status" target="_blank">
+                <span class="mdc-button__label">View JSON Status</span>
+              </a>
             </div>
-            <a class="btn ghost small" href="/">Close</a>
+            <p class="helper-text mt-3">
+              <i class="material-icons">info</i> Self-signed TLS certificates are generated on first run at
+              <code>/data/certs</code>. Replace them for production use.
+            </p>
           </div>
-          <form method="post" action="/save">
-            <input type="hidden" name="edit_id" value="{{ edit_id or '' }}" />
-            <div class="form-grid">
-              <label class="field">
-                <span>Config Name</span>
-                <input type="text" name="name" value="{{ form.name }}" />
-              </label>
-              <label class="field">
-                <span>Domain / SNI</span>
-                <input type="text" name="domain" value="{{ form.domain }}" />
-              </label>
-              <label class="field">
-                <span>Protocol</span>
-                <select name="protocol">
-                  <option value="vless" {% if form.protocol == 'vless' %}selected{% endif %}>VLESS</option>
-                  <option value="vmess" {% if form.protocol == 'vmess' %}selected{% endif %}>VMESS</option>
-                </select>
-              </label>
-            </div>
 
-            <div class="section-title">WebSocket (No TLS)</div>
-            <div class="form-grid">
-              <label class="field toggle">
-                <input type="checkbox" name="ws_enabled" {% if form.ws_enabled %}checked{% endif %} />
-                <span>Enable WS</span>
-              </label>
-              <label class="field">
-                <span>Port</span>
-                <input type="number" name="ws_port" value="{{ form.ws_port }}" min="1" max="65535" />
-              </label>
-              <label class="field">
-                <span>Path</span>
-                <input type="text" name="ws_path" value="{{ form.ws_path }}" />
-              </label>
-              <label class="field">
-                <span>UUID</span>
-                <div class="row">
-                  <input type="text" name="ws_uuid" value="{{ form.ws_uuid }}" />
-                  <button type="button" class="btn ghost" onclick="genUuid('ws_uuid')">Generate</button>
-                </div>
-              </label>
-              <label class="field">
-                <span>Email Label</span>
-                <input type="text" name="ws_email" value="{{ form.ws_email }}" />
-              </label>
-            </div>
-
-            <div class="section-title">WebSocket + TLS</div>
-            <div class="form-grid">
-              <label class="field toggle">
-                <input type="checkbox" name="tls_enabled" {% if form.tls_enabled %}checked{% endif %} />
-                <span>Enable WS + TLS</span>
-              </label>
-              <label class="field">
-                <span>Port</span>
-                <input type="number" name="tls_port" value="{{ form.tls_port }}" min="1" max="65535" />
-              </label>
-              <label class="field">
-                <span>Path</span>
-                <input type="text" name="tls_path" value="{{ form.tls_path }}" />
-              </label>
-              <label class="field">
-                <span>UUID</span>
-                <div class="row">
-                  <input type="text" name="tls_uuid" value="{{ form.tls_uuid }}" />
-                  <button type="button" class="btn ghost" onclick="genUuid('tls_uuid')">Generate</button>
-                </div>
-              </label>
-              <label class="field">
-                <span>Email Label</span>
-                <input type="text" name="tls_email" value="{{ form.tls_email }}" />
-              </label>
-              <label class="field">
-                <span>Cert Path</span>
-                <input type="text" name="tls_cert" value="{{ form.tls_cert }}" />
-              </label>
-              <label class="field">
-                <span>Key Path</span>
-                <input type="text" name="tls_key" value="{{ form.tls_key }}" />
-              </label>
-            </div>
-
-            <div class="actions">
-              <button type="submit" class="btn primary">Save + Restart</button>
-            </div>
-          </form>
-        </div>
-      </div>
-      {% endif %}
-
-      <section class="card wide">
-        <div class="label">Actions</div>
-        <div class="actions">
-          <form method="post" action="/restart">
-            <button type="submit" class="btn">Restart Xray</button>
-          </form>
-          <a class="btn ghost" href="/status" target="_blank">View JSON Status</a>
-        </div>
-        <div class="note">
-          Self-signed TLS certs are generated on first run at `/data/certs`. Replace them for production.
-        </div>
-      </section>
-
-      <footer class="footer">
-        <div>Data directory: {{ status.data_dir }}</div>
-        <div>Server time: {{ status.now }}</div>
-      </footer>
+          <div class="mdc-card settings-card mt-3">
+            <h6 class="settings-subtitle">System Information</h6>
+            <ul class="info-list">
+              <li><span class="info-label">Data Directory:</span> <span>{{ status.data_dir }}</span></li>
+              <li><span class="info-label">Engine PID:</span> <span>{{ status.pid or 'Not Running' }}</span></li>
+              <li><span class="info-label">Server Time:</span> <span>{{ status.now }}</span></li>
+            </ul>
+          </div>
+        </section>
+      </main>
     </div>
+  </div>
 
-    <script>
-      function genUuid(field) {
-        const input = document.querySelector(`input[name="${field}"]`);
-        if (!input) return;
-        if (window.crypto?.randomUUID) {
-          input.value = window.crypto.randomUUID();
-          return;
+  <!-- MODAL -->
+  {% if edit_id %}
+  <div class="mdc-dialog-scrim" onclick="closeModal(event)">
+    <div class="mdc-dialog" onclick="event.stopPropagation()">
+      <h2 class="mdc-dialog__title">
+        {{ 'Edit Configuration' if edit_id != 'new' else 'New Configuration' }}
+      </h2>
+      <div class="mdc-dialog__content">
+        <form method="post" action="/save" id="configForm">
+          <input type="hidden" name="edit_id" value="{{ edit_id if edit_id != 'new' else '' }}" />
+
+          <h6 class="form-section-title">General</h6>
+          <div class="form-grid">
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="name" value="{{ form.name }}">
+              <span class="mdc-floating-label">Config Name</span>
+            </label>
+
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="domain" value="{{ form.domain }}">
+              <span class="mdc-floating-label">Domain / SNI</span>
+            </label>
+
+            <div class="mdc-select mdc-select--outlined">
+              <label>Protocol</label>
+              <select class="native-select" name="protocol">
+                <option value="vless" {% if form.protocol=='vless' %}selected{% endif %}>VLESS</option>
+                <option value="vmess" {% if form.protocol=='vmess' %}selected{% endif %}>VMESS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="form-section-header">
+            <h6 class="form-section-title">WebSocket (No TLS)</h6>
+            <label class="mdc-switch">
+              <input type="checkbox" class="mdc-switch__native-control" name="ws_enabled" {% if form.ws_enabled
+                %}checked{% endif %}>
+              <div class="mdc-switch__background">
+                <div class="mdc-switch__knob"></div>
+              </div>
+              <span class="switch-label">Enable</span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="number" class="mdc-text-field__input" name="ws_port" value="{{ form.ws_port }}">
+              <span class="mdc-floating-label">Port</span>
+            </label>
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="ws_path" value="{{ form.ws_path }}">
+              <span class="mdc-floating-label">Path</span>
+            </label>
+            <div class="input-with-button span-2">
+              <label class="mdc-text-field mdc-text-field--outlined flex-1">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="ws_uuid" value="{{ form.ws_uuid }}">
+                <span class="mdc-floating-label">UUID</span>
+              </label>
+              <button type="button" class="mdc-button mdc-button--outlined"
+                onclick="genUuid('ws_uuid')">Generate</button>
+            </div>
+            <label class="mdc-text-field mdc-text-field--outlined span-2">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="ws_email" value="{{ form.ws_email }}">
+              <span class="mdc-floating-label">Email Label</span>
+            </label>
+          </div>
+
+          <div class="divider"></div>
+          <div class="form-section-header">
+            <h6 class="form-section-title">WebSocket + TLS</h6>
+            <label class="mdc-switch">
+              <input type="checkbox" class="mdc-switch__native-control" name="tls_enabled" {% if form.tls_enabled
+                %}checked{% endif %}>
+              <div class="mdc-switch__background">
+                <div class="mdc-switch__knob"></div>
+              </div>
+              <span class="switch-label">Enable</span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="number" class="mdc-text-field__input" name="tls_port" value="{{ form.tls_port }}">
+              <span class="mdc-floating-label">Port</span>
+            </label>
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="tls_path" value="{{ form.tls_path }}">
+              <span class="mdc-floating-label">Path</span>
+            </label>
+            <div class="input-with-button span-2">
+              <label class="mdc-text-field mdc-text-field--outlined flex-1">
+                <span class="mdc-notched-outline"></span>
+                <input type="text" class="mdc-text-field__input" name="tls_uuid" value="{{ form.tls_uuid }}">
+                <span class="mdc-floating-label">UUID</span>
+              </label>
+              <button type="button" class="mdc-button mdc-button--outlined"
+                onclick="genUuid('tls_uuid')">Generate</button>
+            </div>
+            <label class="mdc-text-field mdc-text-field--outlined span-2">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="tls_email" value="{{ form.tls_email }}">
+              <span class="mdc-floating-label">Email Label</span>
+            </label>
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="tls_cert" value="{{ form.tls_cert }}">
+              <span class="mdc-floating-label">Cert Path</span>
+            </label>
+            <label class="mdc-text-field mdc-text-field--outlined">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="tls_key" value="{{ form.tls_key }}">
+              <span class="mdc-floating-label">Key Path</span>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="mdc-dialog__actions">
+        <button type="button" class="mdc-button" onclick="closeModalDirect()">Cancel</button>
+        <button type="submit" form="configForm" class="mdc-button mdc-button--raised mdc-button--primary">Save</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    // Tab Switching
+    const navItems = document.querySelectorAll('.mdc-list-item');
+    const sections = document.querySelectorAll('.content-section');
+    const pageTitle = document.getElementById('page-title');
+
+    const initHash = window.location.hash.replace('#', '') || 'dashboard';
+
+    function switchTab(targetId) {
+      navItems.forEach(item => {
+        if (item.dataset.target === targetId) {
+          item.classList.add('mdc-list-item--activated');
+          pageTitle.textContent = item.querySelector('.mdc-list-item__text').textContent;
+        } else {
+          item.classList.remove('mdc-list-item--activated');
         }
-        const bytes = new Uint8Array(16);
-        window.crypto.getRandomValues(bytes);
-        bytes[6] = (bytes[6] & 0x0f) | 0x40;
-        bytes[8] = (bytes[8] & 0x3f) | 0x80;
-        const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-        input.value = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-      }
+      });
 
-      function copyUrl(button) {
-        const url = button.parentElement.querySelector(".share-url")?.dataset?.url;
-        if (!url) return;
-        navigator.clipboard.writeText(url);
-      }
-
-      function closeModal(event) {
-        if (event.target.classList.contains("modal-backdrop")) {
-          window.location.href = "/";
+      sections.forEach(sec => {
+        if (sec.id === 'section-' + targetId) {
+          sec.classList.add('active');
+        } else {
+          sec.classList.remove('active');
         }
+      });
+      window.history.replaceState(null, null, '#' + targetId);
+    }
+
+    navItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab(item.dataset.target);
+      });
+    });
+
+    switchTab(initHash);
+
+    // Dismiss Snackbar
+    setTimeout(() => {
+      const snackbars = document.querySelectorAll('.mdc-snackbar');
+      snackbars.forEach(s => s.style.opacity = '0');
+      setTimeout(() => snackbars.forEach(s => s.remove()), 300);
+    }, 3000);
+
+    function genUuid(field) {
+      const input = document.querySelector(`input[name="${field}"]`);
+      if (!input) return;
+      if (window.crypto?.randomUUID) {
+        input.value = window.crypto.randomUUID();
+        return;
       }
-    </script>
-  </body>
+      const bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+      input.value = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+
+    function copyUrl(button) {
+      const input = button.previousElementSibling;
+      if (!input) return;
+      input.select();
+      navigator.clipboard.writeText(input.value);
+
+      const icon = button.querySelector('i');
+      const origText = icon.textContent;
+      icon.textContent = 'check';
+      button.style.color = 'var(--mdc-theme-success)';
+
+      setTimeout(() => {
+        icon.textContent = origText;
+        button.style.color = '';
+      }, 2000);
+    }
+
+    function closeModal(event) {
+      if (event.target.classList.contains("mdc-dialog-scrim")) {
+        window.location.href = "/" + window.location.hash;
+      }
+    }
+    function closeModalDirect() {
+      window.location.href = "/" + window.location.hash;
+    }
+  </script>
+</body>
+
 </html>
