@@ -1,0 +1,176 @@
+{
+  "log": {
+    "loglevel": "info",
+    "access": "/data/logs/access.log",
+    "error": "/data/logs/error.log"
+  },
+  "inbounds": [
+    {
+      "port": 80,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "http-ws",
+      "settings": {
+        "clients": [
+          {
+            "id": "__UUID_80__",
+            "level": 0,
+            "email": "client80@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/ws",
+          "host": "__DOMAIN__"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 8080,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "alt-ws",
+      "settings": {
+        "clients": [
+          {
+            "id": "__UUID_8080__",
+            "level": 0,
+            "email": "client8080@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/ws8080",
+          "host": "__DOMAIN__"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 8443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "tls-ws-alt",
+      "settings": {
+        "clients": [
+          {
+            "id": "__UUID_8443__",
+            "level": 0,
+            "flow": "xtls-rprx-vision",
+            "email": "client8443@example.com"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/data/certs/cert.pem",
+              "keyFile": "/data/certs/key.pem"
+            }
+          ],
+          "minVersion": "1.2",
+          "maxVersion": "1.3",
+          "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+          "alpn": ["http/1.1"],
+          "allowInsecure": false
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    },
+    {
+      "port": 443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "tag": "tls-ws-primary",
+      "settings": {
+        "clients": [
+          {
+            "id": "__UUID_443__",
+            "level": 0,
+            "flow": "xtls-rprx-vision",
+            "email": "client443@example.com"
+          }
+        ],
+        "decryption": "none",
+        "fallbacks": [
+          {
+            "dest": 8000,
+            "xver": 1
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/data/certs/cert.pem",
+              "keyFile": "/data/certs/key.pem"
+            }
+          ],
+          "minVersion": "1.2",
+          "maxVersion": "1.3",
+          "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+          "alpn": ["http/1.1"],
+          "allowInsecure": false
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"],
+        "metadataOnly": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPOnDemand",
+    "rules": [
+      {
+        "type": "field",
+        "domain": ["geosite:private"],
+        "outboundTag": "blocked"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:private"],
+        "outboundTag": "blocked"
+      }
+    ]
+  }
+}

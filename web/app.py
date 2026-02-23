@@ -1,0 +1,563 @@
+from __future__ import annotations
+
+import json
+import os
+import signal
+import subprocess
+import time
+from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
+
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+
+try:
+    import qrcode
+except Exception:
+    qrcode = None
+
+app = Flask(__name__)
+
+DATA_DIR = Path(os.environ.get("XRAY_DATA_DIR", "/data"))
+CONFIG_PATH = DATA_DIR / "config.json"
+CONFIGS_PATH = DATA_DIR / "configs.json"
+CERT_DIR = DATA_DIR / "certs"
+LOG_DIR = DATA_DIR / "logs"
+PID_PATH = DATA_DIR / "xray.pid"
+XRAY_BIN = "/usr/local/bin/xray"
+UI_PORT = int(os.environ.get("UI_PORT", "8088"))
+DOMAIN = os.environ.get("XRAY_DOMAIN", "example.com")
+
+_xray_process = None
+
+
+DEFAULTS = {
+    "name": "Default Config",
+    "domain": DOMAIN,
+    "protocol": "vless",
+    "ws_enabled": True,
+    "ws_port": 80,
+    "ws_path": "/ws",
+    "ws_uuid": str(uuid4()),
+    "ws_email": "client80@example.com",
+    "tls_enabled": True,
+    "tls_port": 443,
+    "tls_path": "/wstls",
+    "tls_uuid": str(uuid4()),
+    "tls_email": "client443@example.com",
+    "tls_cert": "/data/certs/cert.pem",
+    "tls_key": "/data/certs/key.pem",
+}
+
+
+def _now_iso() -> str:
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def ensure_dirs() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    CERT_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_certs(domain: str) -> None:
+    cert_path = CERT_DIR / "cert.pem"
+    key_path = CERT_DIR / "key.pem"
+    if cert_path.exists() and key_path.exists():
+        return
+    subject = f"/C=US/ST=State/L=City/O=Organization/CN={domain}"
+    cmd = [
+        "openssl",
+        "req",
+        "-x509",
+        "-nodes",
+        "-newkey",
+        "rsa:2048",
+        "-days",
+        "365",
+        "-keyout",
+        str(key_path),
+        "-out",
+        str(cert_path),
+        "-subj",
+        subject,
+    ]
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _pid_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def is_xray_running() -> bool:
+    if PID_PATH.exists():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+        except ValueError:
+            return False
+        return _pid_running(pid)
+    return _xray_process is not None and _xray_process.poll() is None
+
+
+def stop_xray() -> None:
+    global _xray_process
+    if PID_PATH.exists():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+            if _pid_running(pid):
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.5)
+        except Exception:
+            pass
+        try:
+            PID_PATH.unlink(missing_ok=True)
+        except Exception:
+            pass
+    if _xray_process is not None and _xray_process.poll() is None:
+        _xray_process.terminate()
+        _xray_process = None
+
+
+def start_xray() -> None:
+    global _xray_process
+    stop_xray()
+    if not CONFIG_PATH.exists():
+        return
+    _xray_process = subprocess.Popen([XRAY_BIN, "-c", str(CONFIG_PATH)])
+    PID_PATH.write_text(str(_xray_process.pid), encoding="utf-8")
+
+
+def get_status() -> dict:
+    config_exists = CONFIG_PATH.exists()
+    config_mtime = None
+    if config_exists:
+        config_mtime = datetime.utcfromtimestamp(CONFIG_PATH.stat().st_mtime).strftime(
+            "%Y-%m-%d %H:%M:%S UTC"
+        )
+    running = is_xray_running()
+    pid = None
+    if PID_PATH.exists():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+        except ValueError:
+            pid = None
+    return {
+        "running": running,
+        "pid": pid,
+        "config_exists": config_exists,
+        "config_mtime": config_mtime,
+        "data_dir": str(DATA_DIR),
+        "domain": DOMAIN,
+        "now": _now_iso(),
+    }
+
+
+def _read_config() -> dict | None:
+    if not CONFIG_PATH.exists():
+        return None
+    try:
+        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _coerce_int(value: str, field: str) -> int:
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{field} must be a number") from exc
+    if number < 1 or number > 65535:
+        raise ValueError(f"{field} must be 1-65535")
+    return number
+
+
+def load_form_state() -> dict:
+    data = dict(DEFAULTS)
+    cfg = _read_config()
+    if not cfg:
+        return data
+
+    inbounds = cfg.get("inbounds", [])
+    for inbound in inbounds:
+        stream = inbound.get("streamSettings", {})
+        network = stream.get("network")
+        security = stream.get("security", "")
+        settings = inbound.get("settings", {})
+        clients = settings.get("clients", [])
+        client = clients[0] if clients else {}
+        ws_settings = stream.get("wsSettings", {})
+
+        if network == "ws" and not security:
+            data["ws_enabled"] = True
+            data["ws_port"] = inbound.get("port", data["ws_port"])
+            data["ws_path"] = ws_settings.get("path", data["ws_path"])
+            data["ws_uuid"] = client.get("id", data["ws_uuid"])
+            data["ws_email"] = client.get("email", data["ws_email"])
+            data["protocol"] = inbound.get("protocol", data["protocol"])
+            host = ws_settings.get("host")
+            if host:
+                data["domain"] = host
+
+        if network == "ws" and security == "tls":
+            data["tls_enabled"] = True
+            data["tls_port"] = inbound.get("port", data["tls_port"])
+            data["tls_path"] = ws_settings.get("path", data["tls_path"])
+            data["tls_uuid"] = client.get("id", data["tls_uuid"])
+            data["tls_email"] = client.get("email", data["tls_email"])
+            data["protocol"] = inbound.get("protocol", data["protocol"])
+            tls_settings = stream.get("tlsSettings", {})
+            certs = tls_settings.get("certificates", [])
+            if certs:
+                data["tls_cert"] = certs[0].get("certificateFile", data["tls_cert"])
+                data["tls_key"] = certs[0].get("keyFile", data["tls_key"])
+
+    return data
+
+
+def _load_store() -> dict:
+    if not CONFIGS_PATH.exists():
+        default_item = dict(DEFAULTS)
+        default_item["id"] = str(uuid4())
+        store = {"active_id": default_item["id"], "configs": [default_item]}
+        CONFIGS_PATH.write_text(json.dumps(store, indent=2), encoding="utf-8")
+        return store
+    try:
+        return json.loads(CONFIGS_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        default_item = dict(DEFAULTS)
+        default_item["id"] = str(uuid4())
+        store = {"active_id": default_item["id"], "configs": [default_item]}
+        CONFIGS_PATH.write_text(json.dumps(store, indent=2), encoding="utf-8")
+        return store
+
+
+def _save_store(store: dict) -> None:
+    CONFIGS_PATH.write_text(json.dumps(store, indent=2), encoding="utf-8")
+
+
+def _find_config(store: dict, config_id: str) -> dict | None:
+    for item in store.get("configs", []):
+        if item.get("id") == config_id:
+            return item
+    return None
+
+
+def _summary(item: dict) -> str:
+    parts = []
+    if item.get("ws_enabled"):
+        parts.append(f"WS:{item.get('ws_port')}")
+    if item.get("tls_enabled"):
+        parts.append(f"WS+TLS:{item.get('tls_port')}")
+    return " | ".join(parts) if parts else "Disabled"
+
+
+def build_config(form: dict) -> dict:
+    domain = form["domain"]
+    ws_enabled = form["ws_enabled"]
+    tls_enabled = form["tls_enabled"]
+    protocol = form.get("protocol", "vless")
+
+    inbounds = []
+    if ws_enabled:
+        ws_client = {
+            "id": form["ws_uuid"],
+            "level": 0,
+            "email": form["ws_email"],
+        }
+        if protocol == "vmess":
+            ws_client["alterId"] = 0
+        inbounds.append(
+            {
+                "port": form["ws_port"],
+                "listen": "0.0.0.0",
+                "protocol": protocol,
+                "tag": "ws",
+                "settings": {
+                    "clients": [ws_client],
+                    **({"decryption": "none"} if protocol == "vless" else {}),
+                },
+                "streamSettings": {
+                    "network": "ws",
+                    "wsSettings": {
+                        "path": form["ws_path"],
+                        "host": domain,
+                    },
+                },
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls"],
+                    "metadataOnly": False,
+                },
+            }
+        )
+
+    if tls_enabled:
+        tls_client = {
+            "id": form["tls_uuid"],
+            "level": 0,
+            "email": form["tls_email"],
+        }
+        if protocol == "vmess":
+            tls_client["alterId"] = 0
+        inbounds.append(
+            {
+                "port": form["tls_port"],
+                "listen": "0.0.0.0",
+                "protocol": protocol,
+                "tag": "ws-tls",
+                "settings": {
+                    "clients": [tls_client],
+                    **({"decryption": "none"} if protocol == "vless" else {}),
+                },
+                "streamSettings": {
+                    "network": "ws",
+                    "security": "tls",
+                    "tlsSettings": {
+                        "certificates": [
+                            {
+                                "certificateFile": form["tls_cert"],
+                                "keyFile": form["tls_key"],
+                            }
+                        ],
+                        "minVersion": "1.2",
+                        "maxVersion": "1.3",
+                        "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+                        "alpn": ["http/1.1"],
+                        "allowInsecure": False,
+                    },
+                    "wsSettings": {
+                        "path": form["tls_path"],
+                        "host": domain,
+                    },
+                },
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls"],
+                    "metadataOnly": False,
+                },
+            }
+        )
+
+    return {
+        "log": {
+            "loglevel": "info",
+            "access": "/data/logs/access.log",
+            "error": "/data/logs/error.log",
+        },
+        "inbounds": inbounds,
+        "outbounds": [
+            {"protocol": "freedom", "settings": {}, "tag": "direct"},
+            {"protocol": "blackhole", "settings": {}, "tag": "blocked"},
+        ],
+        "routing": {
+            "domainStrategy": "IPOnDemand",
+            "rules": [
+                {"type": "field", "domain": ["geosite:private"], "outboundTag": "blocked"},
+                {"type": "field", "ip": ["geoip:private"], "outboundTag": "blocked"},
+            ],
+        },
+    }
+
+
+def read_config_text() -> str:
+    if not CONFIG_PATH.exists():
+        return ""
+    return CONFIG_PATH.read_text(encoding="utf-8")
+
+
+def write_config(config: dict) -> None:
+    CONFIG_PATH.write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+
+def _vmess_link(name: str, domain: str, port: int, uuid: str, path: str, tls: bool) -> str:
+    payload = {
+        "v": "2",
+        "ps": name,
+        "add": domain,
+        "port": str(port),
+        "id": uuid,
+        "aid": "0",
+        "net": "ws",
+        "type": "none",
+        "host": domain,
+        "path": path,
+        "tls": "tls" if tls else "",
+        "sni": domain if tls else "",
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    b64 = __import__("base64").b64encode(raw).decode("utf-8").rstrip("=")
+    return f"vmess://{b64}"
+
+
+def _vless_link(name: str, domain: str, port: int, uuid: str, path: str, tls: bool) -> str:
+    base = f"vless://{uuid}@{domain}:{port}"
+    if tls:
+        return f"{base}?type=ws&path={path}&security=tls&sni={domain}&host={domain}#{name}"
+    return f"{base}?type=ws&path={path}#{name}"
+
+
+def _qr_data(url: str) -> str | None:
+    if qrcode is None:
+        return None
+    qr = qrcode.QRCode(border=2, box_size=4)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    import io
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + __import__("base64").b64encode(buf.getvalue()).decode("utf-8")
+
+
+@app.route("/")
+def index():
+    status = get_status()
+    store = _load_store()
+    edit_id = request.args.get("edit")
+    form_state = load_form_state()
+    if edit_id == "new":
+        form_state = dict(DEFAULTS)
+    elif edit_id:
+        found = _find_config(store, edit_id)
+        if found:
+            form_state = dict(found)
+            if "protocol" not in form_state:
+                form_state["protocol"] = DEFAULTS["protocol"]
+    active = _find_config(store, store.get("active_id", "")) if store else None
+    links = []
+    if active:
+        proto = active.get("protocol", "vless")
+        name = active.get("name", "Config")
+        domain = active.get("domain", DOMAIN)
+        if active.get("tls_enabled"):
+            url = _vless_link(name, domain, active["tls_port"], active["tls_uuid"], active["tls_path"], True) if proto == "vless" else _vmess_link(name, domain, active["tls_port"], active["tls_uuid"], active["tls_path"], True)
+            links.append({"label": "WS + TLS", "url": url, "qr": _qr_data(url)})
+        elif active.get("ws_enabled"):
+            url = _vless_link(name, domain, active["ws_port"], active["ws_uuid"], active["ws_path"], False) if proto == "vless" else _vmess_link(name, domain, active["ws_port"], active["ws_uuid"], active["ws_path"], False)
+            links.append({"label": "WS (No TLS)", "url": url, "qr": _qr_data(url)})
+    message = request.args.get("message")
+    error = request.args.get("error")
+    return render_template(
+        "index.html",
+        status=status,
+        form=form_state,
+        store=store,
+        active=active,
+        links=links,
+        edit_id=edit_id,
+        summary=_summary,
+        message=message,
+        error=error,
+    )
+
+
+@app.route("/save", methods=["POST"])
+def save():
+    store = _load_store()
+    edit_id = request.form.get("edit_id")
+    if edit_id == "new":
+        edit_id = None
+    form = {
+        "id": edit_id or str(uuid4()),
+        "name": request.form.get("name", DEFAULTS["name"]).strip() or DEFAULTS["name"],
+        "domain": request.form.get("domain", DEFAULTS["domain"]).strip() or DEFAULTS["domain"],
+        "protocol": request.form.get("protocol", DEFAULTS["protocol"]).strip() or DEFAULTS["protocol"],
+        "ws_enabled": request.form.get("ws_enabled") == "on",
+        "tls_enabled": request.form.get("tls_enabled") == "on",
+        "ws_path": request.form.get("ws_path", DEFAULTS["ws_path"]).strip() or DEFAULTS["ws_path"],
+        "tls_path": request.form.get("tls_path", DEFAULTS["tls_path"]).strip() or DEFAULTS["tls_path"],
+        "ws_uuid": request.form.get("ws_uuid", "").strip() or str(uuid4()),
+        "tls_uuid": request.form.get("tls_uuid", "").strip() or str(uuid4()),
+        "ws_email": request.form.get("ws_email", DEFAULTS["ws_email"]).strip(),
+        "tls_email": request.form.get("tls_email", DEFAULTS["tls_email"]).strip(),
+        "tls_cert": request.form.get("tls_cert", DEFAULTS["tls_cert"]).strip() or DEFAULTS["tls_cert"],
+        "tls_key": request.form.get("tls_key", DEFAULTS["tls_key"]).strip() or DEFAULTS["tls_key"],
+    }
+
+    try:
+        if form["ws_enabled"]:
+            form["ws_port"] = _coerce_int(request.form.get("ws_port", ""), "WS port")
+        else:
+            form["ws_port"] = DEFAULTS["ws_port"]
+
+        if form["tls_enabled"]:
+            form["tls_port"] = _coerce_int(request.form.get("tls_port", ""), "TLS port")
+        else:
+            form["tls_port"] = DEFAULTS["tls_port"]
+    except ValueError as exc:
+        return redirect(url_for("index", error=str(exc)))
+
+    if not form["ws_enabled"] and not form["tls_enabled"]:
+        return redirect(url_for("index", error="Enable at least one inbound."))
+
+    ensure_dirs()
+    ensure_certs(form["domain"])
+    config = build_config(form)
+    write_config(config)
+    existing = _find_config(store, form["id"])
+    if existing:
+        existing.update(form)
+    else:
+        store.setdefault("configs", []).append(form)
+    store["active_id"] = form["id"]
+    _save_store(store)
+    start_xray()
+    return redirect(url_for("index", message="Config saved and Xray restarted."))
+
+
+@app.route("/new")
+def new_config():
+    return redirect(url_for("index", edit="new"))
+
+
+@app.route("/activate/<config_id>", methods=["POST"])
+def activate(config_id: str):
+    store = _load_store()
+    item = _find_config(store, config_id)
+    if not item:
+        return redirect(url_for("index", error="Config not found."))
+    ensure_dirs()
+    ensure_certs(item["domain"])
+    config = build_config(item)
+    write_config(config)
+    store["active_id"] = config_id
+    _save_store(store)
+    start_xray()
+    return redirect(url_for("index", message="Config activated and Xray restarted."))
+
+
+@app.route("/restart", methods=["POST"])
+def restart():
+    start_xray()
+    return redirect(url_for("index", message="Xray restarted."))
+
+
+@app.route("/status")
+def status():
+    return jsonify(get_status())
+
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({"ok": True, "time": _now_iso()})
+
+
+def bootstrap() -> None:
+    ensure_dirs()
+    store = _load_store()
+    active_id = store.get("active_id")
+    active = _find_config(store, active_id) if active_id else None
+    if not CONFIG_PATH.exists():
+        active = active or DEFAULTS
+        ensure_certs(active["domain"])
+        write_config(build_config(active))
+    start_xray()
+
+
+if __name__ == "__main__":
+    bootstrap()
+    app.run(host="0.0.0.0", port=UI_PORT, debug=False)

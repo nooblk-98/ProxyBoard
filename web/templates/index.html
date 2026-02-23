@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Xray Web UI</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div>
+          <div class="eyebrow">Xray Server</div>
+          <h1>Config Manager</h1>
+        </div>
+        <div class="status-pill {{ 'ok' if status.running else 'bad' }}">
+          {{ 'Running' if status.running else 'Stopped' }}
+        </div>
+      </header>
+
+      {% if message %}
+      <div class="alert ok">{{ message }}</div>
+      {% endif %}
+      {% if error %}
+      <div class="alert bad">{{ error }}</div>
+      {% endif %}
+
+      <section class="grid">
+        <div class="card">
+          <div class="card-head">
+            <div class="label">Domain</div>
+            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
+          </div>
+          <div class="value">{{ status.domain }}</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="label">Active Config</div>
+            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
+          </div>
+          <div class="value">{{ active.name if active else 'None' }}</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="label">Connection Status</div>
+            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
+          </div>
+          <div class="value">{{ summary(active) if active else 'Disabled' }}</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="label">Last Updated</div>
+            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
+          </div>
+          <div class="value">{{ status.config_mtime or 'N/A' }}</div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="label">PID</div>
+            {% if active %}<a class="btn ghost tiny" href="/?edit={{ active.id }}">Edit</a>{% endif %}
+          </div>
+          <div class="value">{{ status.pid or 'N/A' }}</div>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <div class="card-head">
+          <div class="label">Active Config</div>
+          {% if active %}<a class="btn ghost small" href="/?edit={{ active.id }}">Edit Config</a>{% endif %}
+        </div>
+        <div class="active-row">
+          <div>
+            <div class="config-name">{{ active.name if active else 'None' }}</div>
+            <div class="config-meta">{{ summary(active) if active else 'Disabled' }}</div>
+          </div>
+          <div class="config-actions">
+            <a class="btn primary" href="/new">Add New Config</a>
+          </div>
+        </div>
+        {% if not edit_id %}
+        <div class="note">Press Edit or Add New Config to change settings.</div>
+        {% endif %}
+      </section>
+
+      <section class="card wide">
+        <div class="card-head">
+          <div class="label">All Configs</div>
+          <a class="btn ghost small" href="/new">Add New</a>
+        </div>
+        <div class="config-list">
+          {% for item in store.configs %}
+          <div class="config-row">
+            <div>
+              <div class="config-name">{{ item.name }}</div>
+              <div class="config-meta">{{ summary(item) }}</div>
+            </div>
+            <div class="config-actions">
+              <a class="btn ghost small" href="/?edit={{ item.id }}">Edit</a>
+              <form method="post" action="/activate/{{ item.id }}">
+                <button type="submit" class="btn {% if store.active_id == item.id %}primary{% endif %}">
+                  {% if store.active_id == item.id %}Active{% else %}Activate{% endif %}
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card wide">
+        <div class="card-head">
+          <div class="label">Share Links</div>
+          {% if active %}<a class="btn ghost small" href="/?edit={{ active.id }}">Edit Config</a>{% endif %}
+        </div>
+        {% if active and links %}
+        <div class="share-list">
+          {% for link in links %}
+          <div class="share-row">
+            <div class="share-info">
+              <div class="config-name">{{ link.label }}</div>
+              <div class="share-url" data-url="{{ link.url }}">{{ link.url }}</div>
+              <button type="button" class="btn ghost" onclick="copyUrl(this)">Copy URL</button>
+            </div>
+            {% if link.qr %}
+            <div class="share-qr">
+              <img src="{{ link.qr }}" alt="QR" />
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="note">No active links. Enable WS or WS + TLS to generate share links.</div>
+        {% endif %}
+      </section>
+
+      {% if edit_id %}
+      <div class="modal-backdrop" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-head">
+            <div>
+              <div class="label">Edit Config</div>
+              <div class="config-name">{{ form.name }}</div>
+            </div>
+            <a class="btn ghost small" href="/">Close</a>
+          </div>
+          <form method="post" action="/save">
+            <input type="hidden" name="edit_id" value="{{ edit_id or '' }}" />
+            <div class="form-grid">
+              <label class="field">
+                <span>Config Name</span>
+                <input type="text" name="name" value="{{ form.name }}" />
+              </label>
+              <label class="field">
+                <span>Domain / SNI</span>
+                <input type="text" name="domain" value="{{ form.domain }}" />
+              </label>
+              <label class="field">
+                <span>Protocol</span>
+                <select name="protocol">
+                  <option value="vless" {% if form.protocol == 'vless' %}selected{% endif %}>VLESS</option>
+                  <option value="vmess" {% if form.protocol == 'vmess' %}selected{% endif %}>VMESS</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="section-title">WebSocket (No TLS)</div>
+            <div class="form-grid">
+              <label class="field toggle">
+                <input type="checkbox" name="ws_enabled" {% if form.ws_enabled %}checked{% endif %} />
+                <span>Enable WS</span>
+              </label>
+              <label class="field">
+                <span>Port</span>
+                <input type="number" name="ws_port" value="{{ form.ws_port }}" min="1" max="65535" />
+              </label>
+              <label class="field">
+                <span>Path</span>
+                <input type="text" name="ws_path" value="{{ form.ws_path }}" />
+              </label>
+              <label class="field">
+                <span>UUID</span>
+                <div class="row">
+                  <input type="text" name="ws_uuid" value="{{ form.ws_uuid }}" />
+                  <button type="button" class="btn ghost" onclick="genUuid('ws_uuid')">Generate</button>
+                </div>
+              </label>
+              <label class="field">
+                <span>Email Label</span>
+                <input type="text" name="ws_email" value="{{ form.ws_email }}" />
+              </label>
+            </div>
+
+            <div class="section-title">WebSocket + TLS</div>
+            <div class="form-grid">
+              <label class="field toggle">
+                <input type="checkbox" name="tls_enabled" {% if form.tls_enabled %}checked{% endif %} />
+                <span>Enable WS + TLS</span>
+              </label>
+              <label class="field">
+                <span>Port</span>
+                <input type="number" name="tls_port" value="{{ form.tls_port }}" min="1" max="65535" />
+              </label>
+              <label class="field">
+                <span>Path</span>
+                <input type="text" name="tls_path" value="{{ form.tls_path }}" />
+              </label>
+              <label class="field">
+                <span>UUID</span>
+                <div class="row">
+                  <input type="text" name="tls_uuid" value="{{ form.tls_uuid }}" />
+                  <button type="button" class="btn ghost" onclick="genUuid('tls_uuid')">Generate</button>
+                </div>
+              </label>
+              <label class="field">
+                <span>Email Label</span>
+                <input type="text" name="tls_email" value="{{ form.tls_email }}" />
+              </label>
+              <label class="field">
+                <span>Cert Path</span>
+                <input type="text" name="tls_cert" value="{{ form.tls_cert }}" />
+              </label>
+              <label class="field">
+                <span>Key Path</span>
+                <input type="text" name="tls_key" value="{{ form.tls_key }}" />
+              </label>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn primary">Save + Restart</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <section class="card wide">
+        <div class="label">Actions</div>
+        <div class="actions">
+          <form method="post" action="/restart">
+            <button type="submit" class="btn">Restart Xray</button>
+          </form>
+          <a class="btn ghost" href="/status" target="_blank">View JSON Status</a>
+        </div>
+        <div class="note">
+          Self-signed TLS certs are generated on first run at `/data/certs`. Replace them for production.
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div>Data directory: {{ status.data_dir }}</div>
+        <div>Server time: {{ status.now }}</div>
+      </footer>
+    </div>
+
+    <script>
+      function genUuid(field) {
+        const input = document.querySelector(`input[name="${field}"]`);
+        if (!input) return;
+        if (window.crypto?.randomUUID) {
+          input.value = window.crypto.randomUUID();
+          return;
+        }
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+        input.value = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+      }
+
+      function copyUrl(button) {
+        const url = button.parentElement.querySelector(".share-url")?.dataset?.url;
+        if (!url) return;
+        navigator.clipboard.writeText(url);
+      }
+
+      function closeModal(event) {
+        if (event.target.classList.contains("modal-backdrop")) {
+          window.location.href = "/";
+        }
+      }
+    </script>
+  </body>
+</html>

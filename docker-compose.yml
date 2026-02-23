@@ -1,15 +1,23 @@
 services:
-  xray-server:
+  xray-web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: xray-server
+    container_name: xray-web
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "8088:8088"
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+      - "8443:8443"
     environment:
-      - XRAY_LOGLEVEL=info
-      - TZ=UTC
-    stdin_open: true
-    tty: true
+      - UI_PORT=8088
+      - XRAY_DOMAIN=example.com
+    volumes:
+      - xray-data:/data
     cap_add:
       - NET_BIND_SERVICE
+
+volumes:
+  xray-data:

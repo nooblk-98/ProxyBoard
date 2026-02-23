@@ -1,17 +1,19 @@
 FROM ubuntu:22.04
 
-# Install necessary dependencies
+ENV DEBIAN_FRONTEND=noninteractive
+ENV XRAY_DATA_DIR=/data
+ENV UI_PORT=8088
+
 RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
     ca-certificates \
+    curl \
     openssl \
+    python3 \
+    python3-pip \
     unzip \
+    wget \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
-
-# Create directories
-RUN mkdir -p /etc/xray /var/log/xray /certs
 
 # Download and install Xray directly (no systemd required)
 RUN XRAY_VERSION=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | grep -oP '"tag_name": "\K[^"]*') && \
@@ -20,17 +22,16 @@ RUN XRAY_VERSION=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/
     rm Xray-linux-64.zip && \
     chmod +x /usr/local/bin/xray
 
-# Copy Xray configuration files
-COPY xray-configs/ /etc/xray/
+RUN python3 -m pip install --no-cache-dir flask==3.0.3 qrcode==7.4.2 pillow==10.4.0
 
-# Copy certificates (required when not using volume mounts)
-COPY certs/ /certs/
+RUN mkdir -p /opt/xray /opt/xray-web /data
 
-# Create directories for logs and certificates
-RUN mkdir -p /etc/xray /certs /var/log/xray
+COPY config.default.json /opt/xray/config.default.json
+COPY web/ /opt/xray-web/
+COPY entrypoint.sh /entrypoint.sh
 
-# Set proper permissions
-RUN chmod 644 /etc/xray/*.json
+RUN chmod +x /entrypoint.sh
 
-# Start Xray
-CMD ["xray", "-c", "/etc/xray/config.json"]
+EXPOSE 80 443 8080 8443 8088
+
+ENTRYPOINT ["/entrypoint.sh"]
