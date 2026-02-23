@@ -863,11 +863,29 @@ def bootstrap() -> None:
 
 
 if __name__ == "__main__":
+    import threading
     bootstrap()
-    # Use SSL/TLS for web UI if certs exist
-    ssl_context = None
+    
     cert_file = CERT_DIR / "cert.pem"
     key_file = CERT_DIR / "key.pem"
-    if cert_file.exists() and key_file.exists():
-        ssl_context = (str(cert_file), str(key_file))
-    app.run(host="0.0.0.0", port=UI_PORT, debug=False, ssl_context=ssl_context)
+    
+    # HTTP server on UI_PORT
+    def run_http():
+        app.run(host="0.0.0.0", port=UI_PORT, debug=False, use_reloader=False)
+    
+    # HTTPS server on UI_PORT + 1
+    def run_https():
+        ssl_context = None
+        if cert_file.exists() and key_file.exists():
+            ssl_context = (str(cert_file), str(key_file))
+        app.run(host="0.0.0.0", port=UI_PORT + 1, debug=False, ssl_context=ssl_context, use_reloader=False)
+    
+    # Run both servers in separate threads
+    http_thread = threading.Thread(target=run_http, daemon=True)
+    https_thread = threading.Thread(target=run_https, daemon=True)
+    
+    http_thread.start()
+    https_thread.start()
+    
+    http_thread.join()
+    https_thread.join()
