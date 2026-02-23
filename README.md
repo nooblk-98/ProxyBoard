@@ -1,6 +1,6 @@
-# Xray Server Web UI
+# NoobX-UI - Xray Dashboard
 
-Run Xray with a built-in web UI that edits `config.json`, restarts the server, and shows status.
+A modern web UI for managing Xray VPN configurations with real-time status monitoring and easy configuration management.
 
 ## Quick start
 
@@ -20,19 +20,43 @@ Open the UI at:
 
 - `http://localhost:8088`
 
+## Features
+
+- **Dashboard** - Real-time monitoring of Xray engine status, CPU usage, memory, and transfer speeds
+- **Configurations** - Create, edit, enable/disable multiple Xray inbound configurations
+- **Web UI** - Clean Material Design interface with dark mode
+- **Port Management** - Prevent port conflicts between configurations
+- **Self-signed TLS** - Automatic certificate generation
+- **Docker Ready** - One-command deployment with Docker Compose
+
+## Screenshots
+
+### Dashboard
+View real-time status, connection info, and system metrics.
+
+![Dashboard](./images/dash.png)
+
+### Configurations
+Manage multiple Xray configurations easily.
+
+![Configurations](./images/configs.png)
+
 ## What you get
 
-- Web UI to edit the full Xray JSON config
-- Status page showing running state and last config update
+- Modern web UI to manage Xray configurations
+- Status page showing running state and active connections
+- Real-time system monitoring (CPU, memory, traffic)
 - Self-signed TLS certs generated on first run in `/data/certs`
+- Port conflict detection between configs
 
 ## Data persistence
 
 A Docker volume named `xray-data` stores:
 
-- `/data/config.json`
-- `/data/certs/`
-- `/data/logs/`
+- `/data/config.json` - Main Xray configuration
+- `/data/configs.json` - Multiple config profiles
+- `/data/certs/` - SSL certificates
+- `/data/logs/` - Xray access and error logs
 
 ## Configuration
 
@@ -43,5 +67,7 @@ Edit these in `docker-compose.yml` under `environment`:
 
 ## Notes
 
-- Ports `80`, `443`, `8080`, `8443` are mapped by default. Adjust `docker-compose.yml` if you need different ports.
-- Replace the self-signed certs in `/data/certs` for production use.
+- Port `8088` is exposed for the web UI
+- Xray inbound ports (80, 443, 8080, 8443) can be configured per configuration
+- Replace the self-signed certs in `/data/certs` for production use
+- Developed by [nooblk](https://github.com/nooblk-98)
