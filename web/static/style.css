@@ -1001,6 +1001,13 @@ a {
 }
 
 /* ── Scrollable body ─────────────────────────────────────── */
+.cfg-dialog form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .cfg-dialog__body {
   flex: 1 1 0;
   /* 0 basis so it can shrink below content size */
