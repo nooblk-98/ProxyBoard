@@ -77,54 +77,31 @@
         <!-- DASHBOARD SECTION -->
         <section id="section-dashboard" class="content-section active">
           <h5 class="section-title">Overview</h5>
-          <div class="mdc-layout-grid">
-            <div class="mdc-card mdc-card--outlined">
-              <div class="card-icon primary-text"><i class="material-icons">verified</i></div>
-              <div class="card-info">
-                <div class="card-subtitle">Xray Version</div>
-                <div class="card-title">{{ status.xray_version }}</div>
+          <h5 class="section-title">System Metrics</h5>
+          <div class="gauges-grid">
+            <div class="gauge-container">
+              <div class="gauge-canvas-wrapper">
+                <canvas id="cpuGauge" width="160" height="160"></canvas>
               </div>
+              <div class="gauge-label">CPU Usage</div>
             </div>
-            <div class="mdc-card mdc-card--outlined">
-              <div class="card-icon {{ 'success-text' if active_count > 0 else 'warning-text' }}">
-                <i class="material-icons">wifi_tethering</i>
+            <div class="gauge-container">
+              <div class="gauge-canvas-wrapper">
+                <canvas id="memGauge" width="160" height="160"></canvas>
               </div>
-              <div class="card-info">
-                <div class="card-subtitle">Active Connections</div>
-                <div class="card-title">{{ active_count }} Active Configurations</div>
-              </div>
+              <div class="gauge-label">Memory Usage</div>
             </div>
-            <div class="mdc-card mdc-card--outlined">
-              <div class="card-icon info-text"><i class="material-icons">memory</i></div>
-              <div class="card-info">
-                <div class="card-subtitle">CPU Usage</div>
-                <div class="card-title" id="ui-cpu">{{ status.sys_info.cpu if status.sys_info else '0.00' }}</div>
+            <div class="gauge-container">
+              <div class="gauge-canvas-wrapper">
+                <canvas id="uploadGauge" width="160" height="160"></canvas>
               </div>
+              <div class="gauge-label">Upload</div>
             </div>
-            <div class="mdc-card mdc-card--outlined">
-              <div class="card-icon info-text"><i class="material-icons">storage</i></div>
-              <div class="card-info">
-                <div class="card-subtitle">Memory Usage</div>
-                <div class="card-title" id="ui-mem">{{ status.sys_info.mem if status.sys_info else '0.0%' }}</div>
+            <div class="gauge-container">
+              <div class="gauge-canvas-wrapper">
+                <canvas id="downloadGauge" width="160" height="160"></canvas>
               </div>
-            </div>
-          </div>
-
-          <h5 class="section-title">Transfer Speeds</h5>
-          <div class="mdc-layout-grid">
-            <div class="mdc-card speed-card">
-              <i class="material-icons primary-text">arrow_upward</i>
-              <div>
-                <div class="speed-value" id="ui-up">{{ status.up_speed }}</div>
-                <div class="speed-label">Upload</div>
-              </div>
-            </div>
-            <div class="mdc-card speed-card">
-              <i class="material-icons success-text">arrow_downward</i>
-              <div>
-                <div class="speed-value" id="ui-down">{{ status.down_speed }}</div>
-                <div class="speed-label">Download</div>
-              </div>
+              <div class="gauge-label">Download</div>
             </div>
           </div>
 
@@ -471,8 +448,49 @@
     const trafficLabels = Array(maxDataPoints).fill('');
     const upData = Array(maxDataPoints).fill(0);
     const downData = Array(maxDataPoints).fill(0);
+    let cpuGaugeChart, memGaugeChart, uploadGaugeChart, downloadGaugeChart;
+
+    function createGaugeChart(canvasId, color, initialValue = 0) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [initialValue, 100 - initialValue],
+            backgroundColor: [color, 'rgba(255, 255, 255, 0.1)'],
+            borderColor: ['transparent', 'transparent'],
+            borderWidth: 0,
+            circumference: 360,
+            rotation: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 300 },
+          plugins: {
+            tooltip: { enabled: false },
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function updateGauge(chart, value) {
+      if (chart && chart.data && chart.data.datasets[0]) {
+        chart.data.datasets[0].data = [Math.min(value, 100), Math.max(0, 100 - value)];
+        chart.update();
+      }
+    }
 
     function initChart() {
+      // Initialize gauges
+      cpuGaugeChart = createGaugeChart('cpuGauge', 'rgba(255, 152, 0, 1)', 0);
+      memGaugeChart = createGaugeChart('memGauge', 'rgba(76, 175, 80, 1)', 0);
+      uploadGaugeChart = createGaugeChart('uploadGauge', 'rgba(187, 134, 252, 1)', 0);
+      downloadGaugeChart = createGaugeChart('downloadGauge', 'rgba(3, 218, 198, 1)', 0);
+
+      // Initialize traffic chart
       const ctx = document.getElementById('trafficChart').getContext('2d');
       trafficChart = new Chart(ctx, {
         type: 'line',
@@ -525,13 +543,22 @@
         const res = await fetch('/status');
         const data = await res.json();
 
-        // Update UI
+        // Extract numeric values from strings
+        let cpuValue = 0;
+        let memValue = 0;
         if (data.sys_info) {
-          document.getElementById('ui-cpu').textContent = data.sys_info.cpu;
-          document.getElementById('ui-mem').textContent = data.sys_info.mem;
+          cpuValue = parseFloat(data.sys_info.cpu) || 0;
+          memValue = parseFloat(data.sys_info.mem) || 0;
         }
-        document.getElementById('ui-up').textContent = data.up_speed;
-        document.getElementById('ui-down').textContent = data.down_speed;
+
+        // Update gauges
+        updateGauge(cpuGaugeChart, Math.min(cpuValue, 100));
+        updateGauge(memGaugeChart, memValue);
+        // For upload/download, normalize to 0-100 (max 1000 KB/s displayed)
+        const uploadValue = Math.min((data.up_raw / 1000) * 100, 100);
+        const downloadValue = Math.min((data.down_raw / 1000) * 100, 100);
+        updateGauge(uploadGaugeChart, uploadValue);
+        updateGauge(downloadGaugeChart, downloadValue);
 
         // Update Chart
         if (trafficChart) {
