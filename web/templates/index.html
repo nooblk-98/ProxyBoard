@@ -391,6 +391,17 @@
                 <span class="mdc-floating-label">Key Path</span>
               </label>
             </div>
+
+          <div class="divider"></div>
+          <h6 class="form-section-title">DNS Configuration</h6>
+          <div class="form-grid">
+            <label class="mdc-text-field mdc-text-field--outlined span-2">
+              <span class="mdc-notched-outline"></span>
+              <input type="text" class="mdc-text-field__input" name="dns" value="{{ form.dns or '1.1.1.1' }}" placeholder="1.1.1.1">
+              <span class="mdc-floating-label">Remote DNS Server</span>
+            </label>
+          </div>
+            </div>
           </div>
         </form>
       </div>

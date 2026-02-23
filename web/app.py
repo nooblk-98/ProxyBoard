@@ -50,6 +50,7 @@ DEFAULTS = {
     "tls_cert": "/data/certs/cert.pem",
     "tls_key": "/data/certs/key.pem",
     "tls_host": DOMAIN,
+    "dns": "1.1.1.1",
 }
 
 
@@ -602,6 +603,14 @@ def build_config(configs: list) -> dict:
             {"protocol": "freedom", "settings": {}, "tag": "direct"},
             {"protocol": "blackhole", "settings": {}, "tag": "blocked"},
         ],
+        "dns": {
+            "servers": [
+                {
+                    "address": form.get("dns", DEFAULTS["dns"]),
+                    "port": 53
+                }
+            ]
+        },
         "routing": {
             "domainStrategy": "IPOnDemand",
             "rules": [
@@ -744,6 +753,7 @@ def save():
         "tls_email": request.form.get("tls_email", DEFAULTS["tls_email"]).strip(),
         "tls_cert": request.form.get("tls_cert", DEFAULTS["tls_cert"]).strip() or DEFAULTS["tls_cert"],
         "tls_key": request.form.get("tls_key", DEFAULTS["tls_key"]).strip() or DEFAULTS["tls_key"],
+        "dns": request.form.get("dns", DEFAULTS["dns"]).strip() or DEFAULTS["dns"],
     }
 
     try:
