@@ -549,8 +549,8 @@ def build_config(configs: list) -> dict:
                             "minVersion": "1.2",
                             "maxVersion": "1.3",
                             "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
-                            "fingerprint": form["fingerprint"],
-                            "alpn": [s.strip() for s in form["alpn"].split(",")],
+                            "fingerprint": form.get("fingerprint", "randomized"),
+                            "alpn": [s.strip() for s in form.get("alpn", "h2,h3,http/1.1").split(",")],
                             "allowInsecure": False,
                         },
                         "wsSettings": {
@@ -827,6 +827,11 @@ def new_config():
 def delete_config(config_id: str):
     store = _load_store()
     original_len = len(store.get("configs", []))
+    
+    # Prevent deleting the last config
+    if original_len <= 1:
+        return redirect(url_for("index", error="Cannot delete the last configuration. At least one config must exist.") + "#configs")
+    
     store["configs"] = [c for c in store.get("configs", []) if c.get("id") != config_id]
     if len(store["configs"]) < original_len:
         ensure_dirs()
