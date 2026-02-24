@@ -1,4 +1,5 @@
 import json
+import platform
 import subprocess
 import time
 
@@ -14,21 +15,23 @@ _last_stats_time = 0.0
 
 def get_sys_info() -> dict:
     info = {"cpu": "0.00", "mem": "0.0%"}
-    import platform
     if platform.system() == "Linux":
         try:
             with open("/proc/loadavg", "r") as f:
                 info["cpu"] = f.read().split()[0]
             with open("/proc/meminfo", "r") as f:
                 lines = f.readlines()
-                total = available = 0
+                total = None
+                available = None
                 for line in lines:
                     if line.startswith("MemTotal:"):
                         total = int(line.split()[1])
                     elif line.startswith("MemAvailable:"):
                         available = int(line.split()[1])
-                if total > 0:
-                    used = total - available
+                    if total is not None and available is not None:
+                        break
+                if total:
+                    used = total - (available or 0)
                     info["mem"] = f"{(used / total) * 100:.1f}%"
         except Exception:
             pass
@@ -39,7 +42,6 @@ def get_net_speed() -> dict:
     global _last_net_io, _last_net_time, _last_speeds
     up_speed = 0.0
     down_speed = 0.0
-    import platform
     if platform.system() == "Linux":
         try:
             with open("/proc/net/dev", "r") as f:
@@ -72,21 +74,9 @@ def get_net_speed() -> dict:
         except Exception:
             pass
 
-    def format_bytes(b):
-        if b < 1024:
-            return f"{b:.1f} B"
-        if b < 1024 * 1024:
-            return f"{b/1024:.1f} KB"
-        if b < 1024 * 1024 * 1024:
-            return f"{b/1024/1024:.1f} MB"
-        return f"{b/1024/1024/1024:.1f} GB"
-
-    def format_speed(b):
-        return f"{format_bytes(b)}/s"
-
     return {
-        "up_str": format_speed(max(0, up_speed)),
-        "down_str": format_speed(max(0, down_speed)),
+        "up_str": f"{format_bytes_global(max(0, up_speed))}/s",
+        "down_str": f"{format_bytes_global(max(0, down_speed))}/s",
         "up_raw": max(0, up_speed) / 1024,
         "down_raw": max(0, down_speed) / 1024,
     }
@@ -104,7 +94,6 @@ def format_bytes_global(b):
 
 def get_active_ports() -> list:
     active_ports = set()
-    import platform
     if platform.system() == "Linux":
         for net_file in ["/proc/net/tcp", "/proc/net/tcp6"]:
             try:
