@@ -1,5 +1,8 @@
+import base64
+import io
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -9,8 +12,6 @@ try:
     import qrcode
 except Exception:
     qrcode = None
-
-from datetime import datetime
 
 from .constants import CONFIG_PATH, DATA_DIR, DEFAULTS, DOMAIN, PID_PATH, XRAY_BIN
 from .stats import get_active_ports, get_net_speed, get_sys_info, get_xray_stats
@@ -52,7 +53,7 @@ def _vmess_link(name: str, domain: str, port: int, uuid: str, path: str, tls: bo
         "sni": host if tls else "",
     }
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    b64 = __import__("base64").b64encode(raw).decode("utf-8").rstrip("=")
+    b64 = base64.b64encode(raw).decode("utf-8").rstrip("=")
     return f"vmess://{b64}"
 
 
@@ -71,10 +72,9 @@ def _qr_data(url: str) -> str | None:
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
-    import io
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    return "data:image/png;base64," + __import__("base64").b64encode(buf.getvalue()).decode("utf-8")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
 def get_status() -> dict:
@@ -114,25 +114,6 @@ def get_status() -> dict:
         "active_ports": active_ports,
         "xray_stats": xray_stats,
     }
-
-
-def create_app() -> Flask:
-    # Get the parent directory of the ui module (which is web/)
-    web_dir = Path(__file__).parent.parent
-    app = Flask(__name__,
-                template_folder=str(web_dir / 'templates'),
-                static_folder=str(web_dir / 'static'))
-
-    # Suppress logging for status/health check endpoints
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-
-    @app.before_request
-    def suppress_status_logs():
-        if request.path in ['/status', '/healthz']:
-            logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        else:
-            logging.getLogger('werkzeug').setLevel(logging.INFO)
 
 
 def _prepare_configs_data():
