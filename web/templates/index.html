@@ -45,11 +45,6 @@
           <i class="material-icons">{{ 'check_circle' if status.running else 'error' }}</i>
           {{ 'Engine Running' if status.running else 'Engine Stopped' }}
         </div>
-        <a href="https://github.com/nooblk-98" target="_blank" class="mdc-button mdc-button--outlined"
-          style="margin-top: 10px; width: 100%; font-size: 12px;">
-          <i class="material-icons" style="font-size: 16px;">code</i>
-          <span class="mdc-button__label">Developed by nooblk</span>
-        </a>
       </div>
     </aside>
 
@@ -228,36 +223,111 @@
 
         <!-- SETTINGS SECTION -->
         <section id="section-settings" class="content-section">
-
-          <div class="mdc-card settings-card">
-            <h6 class="settings-subtitle">Service Control</h6>
-            <div class="actions-row">
-              <form method="post" action="/restart">
-                <button type="submit" class="mdc-button mdc-button--raised mdc-button--warning">
-                  <i class="material-icons mdc-button__icon">restart_alt</i>
-                  <span class="mdc-button__label">Restart Engine</span>
-                </button>
-              </form>
-              <a class="mdc-button mdc-button--outlined" href="/status" target="_blank">
-                <span class="mdc-button__label">View JSON Status</span>
-              </a>
+          <h5 class="section-title">System Settings</h5>
+          <div class="settings-grid">
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">Interface Preferences</h6>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Light Theme</div>
+                  <div class="settings-row-help">Switch to a bright white theme for daylight use.</div>
+                </div>
+                <label class="mdc-switch">
+                  <input type="checkbox" class="mdc-switch__native-control" role="switch" id="theme-toggle">
+                  <div class="mdc-switch__background">
+                    <div class="mdc-switch__knob"></div>
+                  </div>
+                </label>
+              </div>
+              <div class="divider"></div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Reduce Motion</div>
+                  <div class="settings-row-help">Minimize animations and transitions.</div>
+                </div>
+                <label class="mdc-switch">
+                  <input type="checkbox" class="mdc-switch__native-control" role="switch" id="motion-toggle">
+                  <div class="mdc-switch__background">
+                    <div class="mdc-switch__knob"></div>
+                  </div>
+                </label>
+              </div>
             </div>
-            <p class="helper-text mt-3">
-              <i class="material-icons">info</i> Self-signed TLS certificates are generated on first run at
-              <code>/data/certs</code>. Replace them for production use.
-            </p>
-          </div>
 
-          <div class="mdc-card settings-card mt-3">
-            <h6 class="settings-subtitle">System Information</h6>
-            <ul class="info-list">
-              <li><span class="info-label">Data Directory:</span> <span>{{ status.data_dir }}</span></li>
-              <li><span class="info-label">Engine PID:</span> <span>{{ status.pid or 'Not Running' }}</span></li>
-              <li><span class="info-label">Server Time:</span> <span>{{ status.now }}</span></li>
-            </ul>
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">Live Metrics</h6>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Auto Refresh</div>
+                  <div class="settings-row-help">Keep dashboard metrics and status in sync.</div>
+                </div>
+                <label class="mdc-switch">
+                  <input type="checkbox" class="mdc-switch__native-control" role="switch" id="refresh-toggle">
+                  <div class="mdc-switch__background">
+                    <div class="mdc-switch__knob"></div>
+                  </div>
+                </label>
+              </div>
+              <div class="divider"></div>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Refresh Interval</div>
+                  <div class="settings-row-help">How often to poll the status endpoint.</div>
+                </div>
+                <div class="settings-row-control settings-select-wrap">
+                  <select id="refresh-interval" class="settings-select" aria-label="Refresh interval">
+                    <option value="3000">Every 3 seconds</option>
+                    <option value="5000">Every 5 seconds</option>
+                    <option value="10000">Every 10 seconds</option>
+                  </select>
+                  <i class="material-icons settings-select-arrow">expand_more</i>
+                </div>
+              </div>
+            </div>
+
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">Service Control</h6>
+              <div class="actions-row">
+                <form method="post" action="/restart">
+                  <button type="submit" class="mdc-button mdc-button--raised mdc-button--warning">
+                    <i class="material-icons mdc-button__icon">restart_alt</i>
+                    <span class="mdc-button__label">Restart Engine</span>
+                  </button>
+                </form>
+                <a class="mdc-button mdc-button--outlined" href="/status" target="_blank">
+                  <span class="mdc-button__label">View JSON Status</span>
+                </a>
+              </div>
+              <p class="helper-text mt-3">
+                <i class="material-icons">info</i> Self-signed TLS certificates are generated on first run at
+                <code>/data/certs</code>. Replace them for production use.
+              </p>
+            </div>
+
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">System Information</h6>
+              <ul class="info-list">
+                <li><span class="info-label">Data Directory:</span> <span>{{ status.data_dir }}</span></li>
+                <li><span class="info-label">Engine PID:</span> <span>{{ status.pid or 'Not Running' }}</span></li>
+                <li><span class="info-label">Server Time:</span> <span>{{ status.now }}</span></li>
+              </ul>
+            </div>
           </div>
         </section>
       </main>
+      <footer class="app-footer">
+        <div class="app-footer__left">
+          <span class="app-footer__brand">NoobX-UI</span>
+          <span class="app-footer__divider">•</span>
+          <span class="app-footer__text">Developed by</span>
+          <a href="https://github.com/nooblk-98" target="_blank" class="app-footer__link">nooblk</a>
+        </div>
+        <div class="app-footer__right">
+          <span class="app-footer__text">Status</span>
+          <span class="status-dot {{ 'green' if status.running else 'grey' }}"></span>
+          <span class="app-footer__text">{{ 'Running' if status.running else 'Stopped' }}</span>
+        </div>
+      </footer>
     </div>
   </div>
 
@@ -473,6 +543,20 @@
   <script>
     const configsData = {{ configs | tojson }};
     const defaultsData = {{ DEFAULTS | tojson | default ('{}') | safe }};
+    let pollIntervalId = null;
+
+    function getThemeVars() {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        gaugeInnerBg: styles.getPropertyValue('--gauge-inner-bg').trim() || '#1a1a2e',
+        gaugeEmptyTick: styles.getPropertyValue('--gauge-empty-tick').trim() || 'rgba(255,255,255,0.10)',
+        gaugeRingBorder: styles.getPropertyValue('--gauge-ring-border').trim() || 'rgba(255,255,255,0.06)',
+        gaugeText: styles.getPropertyValue('--gauge-text').trim() || '#ffffff',
+        gaugeUnitText: styles.getPropertyValue('--gauge-unit-text').trim() || 'rgba(255,255,255,0.60)',
+        chartGrid: styles.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,0.1)',
+        chartText: styles.getPropertyValue('--chart-text').trim() || 'rgba(255,255,255,0.7)'
+      };
+    }
 
     function openEditModal(editId) {
       const form = document.getElementById('configForm');
@@ -530,6 +614,7 @@
       const H = canvas.height;
       const cx = W / 2;
       const cy = H / 2;
+      const themeVars = getThemeVars();
 
       ctx.clearRect(0, 0, W, H);
 
@@ -565,7 +650,7 @@
         } else {
           ctx.shadowBlur = 0;
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = 'rgba(255,255,255,0.10)';
+          ctx.fillStyle = themeVars.gaugeEmptyTick;
           ctx.fillRect(innerR, -tickW / 2, tickLen, tickW);
         }
         ctx.restore();
@@ -577,13 +662,13 @@
       // ── Inner dark filled circle ──────────────────────────────────────
       ctx.beginPath();
       ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a1a2e';
+      ctx.fillStyle = themeVars.gaugeInnerBg;
       ctx.fill();
 
       // Subtle ring border
       ctx.beginPath();
       ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = themeVars.gaugeRingBorder;
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -596,14 +681,14 @@
 
       // Big bold number
       ctx.font = 'bold 30px "Roboto", sans-serif';
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = themeVars.gaugeText;
       ctx.shadowColor = color;
       ctx.shadowBlur = 10;
       ctx.fillText(numStr, cx, cy - 8);
 
       // Smaller unit label below
       ctx.font = '500 13px "Roboto", sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.60)';
+      ctx.fillStyle = themeVars.gaugeUnitText;
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
       ctx.fillText(unitStr, cx, cy + 14);
@@ -626,6 +711,7 @@
     }
 
     function initChart() {
+      const themeVars = getThemeVars();
       // Initialize gauges with initial draw
       updateGauge('cpuGauge', 0, 'cpu');
       updateGauge('memGauge', 0, 'mem');
@@ -669,12 +755,12 @@
             x: { display: false },
             y: {
               beginAtZero: true,
-              grid: { color: 'rgba(255, 255, 255, 0.1)' },
-              ticks: { color: 'rgba(255, 255, 255, 0.6)' }
+              grid: { color: themeVars.chartGrid },
+              ticks: { color: themeVars.chartText }
             }
           },
           plugins: {
-            legend: { labels: { color: 'rgba(255, 255, 255, 0.87)' } }
+            legend: { labels: { color: themeVars.chartText } }
           }
         }
       });
@@ -750,9 +836,53 @@
       }
     }
 
+    function applyThemeToChart() {
+      if (!trafficChart) return;
+      const themeVars = getThemeVars();
+      trafficChart.options.scales.y.grid.color = themeVars.chartGrid;
+      trafficChart.options.scales.y.ticks.color = themeVars.chartText;
+      trafficChart.options.plugins.legend.labels.color = themeVars.chartText;
+      trafficChart.update();
+    }
+
+    function refreshGaugeTheme() {
+      updateGauge('cpuGauge', gaugeValues.cpu, 'cpu');
+      updateGauge('memGauge', gaugeValues.mem, 'mem');
+      updateGauge('uploadGauge', gaugeValues.upload, 'upload');
+      updateGauge('downloadGauge', gaugeValues.download, 'download');
+    }
+
+    function setTheme(mode) {
+      const root = document.documentElement;
+      const isLight = mode === 'light';
+      root.classList.toggle('theme-light', isLight);
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      applyThemeToChart();
+      refreshGaugeTheme();
+    }
+
+    function setReducedMotion(enabled) {
+      const root = document.documentElement;
+      root.classList.toggle('reduced-motion', enabled);
+      localStorage.setItem('reduced_motion', enabled ? '1' : '0');
+    }
+
+    function startPolling(intervalMs) {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+      }
+      pollIntervalId = setInterval(pollStatus, intervalMs);
+    }
+
+    function stopPolling() {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = null;
+      }
+    }
+
     if (document.getElementById('trafficChart')) {
       initChart();
-      setInterval(pollStatus, 3000);  // Poll every 3 seconds for stable readings
     }
 
     // Tab Switching
@@ -790,6 +920,64 @@
     });
 
     switchTab(initHash);
+
+    // Settings: theme + motion + refresh
+    const themeToggle = document.getElementById('theme-toggle');
+    const motionToggle = document.getElementById('motion-toggle');
+    const refreshToggle = document.getElementById('refresh-toggle');
+    const refreshInterval = document.getElementById('refresh-interval');
+
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const storedTheme = localStorage.getItem('theme');
+    const initialTheme = storedTheme || (prefersLight ? 'light' : 'dark');
+    setTheme(initialTheme);
+    if (themeToggle) {
+      themeToggle.checked = initialTheme === 'light';
+      themeToggle.addEventListener('change', (e) => {
+        setTheme(e.target.checked ? 'light' : 'dark');
+      });
+    }
+
+    const storedMotion = localStorage.getItem('reduced_motion') === '1';
+    setReducedMotion(storedMotion);
+    if (motionToggle) {
+      motionToggle.checked = storedMotion;
+      motionToggle.addEventListener('change', (e) => {
+        setReducedMotion(e.target.checked);
+      });
+    }
+
+    const storedRefreshEnabled = localStorage.getItem('refresh_enabled');
+    const refreshEnabled = storedRefreshEnabled !== '0';
+    const storedInterval = parseInt(localStorage.getItem('refresh_interval') || '3000', 10);
+    if (refreshToggle) {
+      refreshToggle.checked = refreshEnabled;
+      refreshToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        localStorage.setItem('refresh_enabled', enabled ? '1' : '0');
+        if (enabled) {
+          startPolling(parseInt(refreshInterval.value, 10));
+          pollStatus();
+        } else {
+          stopPolling();
+        }
+      });
+    }
+    if (refreshInterval) {
+      refreshInterval.value = String(storedInterval);
+      refreshInterval.addEventListener('change', (e) => {
+        const intervalMs = parseInt(e.target.value, 10);
+        localStorage.setItem('refresh_interval', String(intervalMs));
+        if (refreshToggle && refreshToggle.checked) {
+          startPolling(intervalMs);
+        }
+      });
+    }
+
+    if (refreshEnabled && document.getElementById('trafficChart')) {
+      startPolling(storedInterval);
+      pollStatus();
+    }
 
     // Dismiss Snackbar
     setTimeout(() => {
