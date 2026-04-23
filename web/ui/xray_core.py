@@ -299,6 +299,75 @@ def switch_xray_version(version_key: str) -> tuple[bool, str]:
     return True, f"Switched Xray core to {version_key}."
 
 
+def download_with_progress(version_key: str, progress_cb) -> tuple[bool, str]:
+    """Download and install version_key, calling progress_cb(pct, status) as it progresses."""
+    asset_names = _asset_candidates_for_host()
+    tag_candidates = _tag_candidates(version_key)
+
+    XRAY_VERSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    target_dir = XRAY_VERSIONS_DIR / version_key
+    target_dir.mkdir(parents=True, exist_ok=True)
+    tmp_dir = XRAY_VERSIONS_DIR / "_tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = tmp_dir / f"{version_key}.zip"
+
+    progress_cb(5, f"Resolving download URL for {version_key}...")
+
+    for tag in tag_candidates:
+        for asset_name in asset_names:
+            url = f"{XRAY_RELEASE_BASE}/{tag}/{asset_name}"
+            try:
+                progress_cb(10, f"Downloading {asset_name}...")
+
+                downloaded = [0]
+                total = [0]
+
+                def _reporthook(block_num, block_size, file_size):
+                    if file_size > 0:
+                        total[0] = file_size
+                    downloaded[0] = block_num * block_size
+                    if total[0] > 0:
+                        pct = min(int(downloaded[0] / total[0] * 80) + 10, 89)
+                        progress_cb(pct, f"Downloading... {downloaded[0] // 1024} / {total[0] // 1024} KB")
+
+                urllib.request.urlretrieve(url, zip_path, reporthook=_reporthook)
+                progress_cb(90, "Extracting archive...")
+
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    names = set(zf.namelist())
+                    if "xray" not in names:
+                        continue
+                    zf.extract("xray", path=target_dir)
+                    if "geosite.dat" in names:
+                        zf.extract("geosite.dat", path=target_dir)
+                    if "geoip.dat" in names:
+                        zf.extract("geoip.dat", path=target_dir)
+
+                progress_cb(95, "Setting permissions...")
+                binary = target_dir / "xray"
+                binary.chmod(0o755)
+                for asset in ("geosite.dat", "geoip.dat"):
+                    p = target_dir / asset
+                    if p.exists():
+                        p.chmod(0o644)
+
+                try:
+                    zip_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+                progress_cb(99, f"Installed {version_key} successfully.")
+                return True, f"Installed {version_key}."
+            except Exception as exc:
+                try:
+                    zip_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                continue
+
+    return False, f"Failed to download/install {version_key}."
+
+
 def maybe_install_and_switch(version_key: str) -> tuple[bool, str]:
     versions = {v["key"]: v for v in list_xray_versions()}
     entry = versions.get(version_key)

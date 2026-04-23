@@ -519,3 +519,71 @@ if (refreshEnabled && document.getElementById('trafficChart')) {
   startPolling(storedInterval);
   pollStatus();
 }
+
+// Xray version switch with download progress
+const switchForm = document.querySelector('form[action="/xray/switch"]');
+if (switchForm) {
+  switchForm.addEventListener('submit', function (e) {
+    const select = switchForm.querySelector('select[name="xray_version"]');
+    if (!select) return;
+    const selectedOption = select.options[select.selectedIndex];
+    const needsDownload = selectedOption && selectedOption.text.includes('(will download)');
+    if (!needsDownload) return;
+
+    e.preventDefault();
+    const versionKey = select.value;
+    openDownloadModal(versionKey);
+  });
+}
+
+function openDownloadModal(versionKey) {
+  const scrim = document.getElementById('dl-modal-scrim');
+  const title = document.getElementById('dl-modal-title');
+  const statusEl = document.getElementById('dl-modal-status');
+  const bar = document.getElementById('dl-progress-bar');
+  const pctEl = document.getElementById('dl-progress-pct');
+
+  title.textContent = `Installing Xray ${versionKey}`;
+  statusEl.textContent = 'Connecting...';
+  bar.style.width = '0%';
+  pctEl.textContent = '';
+  scrim.style.display = 'flex';
+
+  const es = new EventSource(`/xray/install-stream/${encodeURIComponent(versionKey)}`);
+
+  es.onmessage = function (event) {
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
+
+    if (data.type === 'progress' || data.type === 'status') {
+      statusEl.textContent = data.msg || '';
+      if (typeof data.pct === 'number') {
+        bar.style.width = data.pct + '%';
+        pctEl.textContent = data.pct + '%';
+      }
+    } else if (data.type === 'done') {
+      bar.style.width = '100%';
+      pctEl.textContent = '100%';
+      statusEl.textContent = data.msg || 'Done!';
+      es.close();
+      setTimeout(() => {
+        scrim.style.display = 'none';
+        window.location.href = '/settings?message=' + encodeURIComponent(data.msg || 'Switched successfully.');
+      }, 800);
+    } else if (data.type === 'error') {
+      statusEl.textContent = '⚠ ' + (data.msg || 'Download failed.');
+      bar.style.background = 'var(--mdc-theme-error, #cf6679)';
+      es.close();
+      setTimeout(() => {
+        scrim.style.display = 'none';
+        bar.style.background = '';
+        window.location.href = '/settings?error=' + encodeURIComponent(data.msg || 'Failed.');
+      }, 2000);
+    }
+  };
+
+  es.onerror = function () {
+    statusEl.textContent = 'Connection lost. Please try again.';
+    es.close();
+  };
+}

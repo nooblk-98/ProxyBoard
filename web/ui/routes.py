@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 try:
     import qrcode
@@ -28,11 +28,13 @@ from .system import ensure_certs, ensure_dirs
 from .xray_core import (
     _current_xray_key,
     _now_iso,
+    download_with_progress,
     get_xray_version,
     is_xray_running,
     list_xray_versions,
     maybe_install_and_switch,
     start_xray,
+    switch_xray_version,
 )
 
 
@@ -381,6 +383,50 @@ def create_app() -> Flask:
         if ok:
             return redirect(url_for("settings", message=msg))
         return redirect(url_for("settings", error=msg))
+
+    @app.route("/xray/install-stream/<version_key>")
+    def install_stream(version_key: str):
+        import json as _json
+        import queue
+        import threading
+
+        versions = {v["key"]: v for v in list_xray_versions()}
+        entry = versions.get(version_key)
+
+        def generate():
+            if not entry:
+                yield f"data: {_json.dumps({'type': 'error', 'msg': 'Version not found.'})}\n\n"
+                return
+
+            if entry.get("installed"):
+                yield f"data: {_json.dumps({'type': 'status', 'msg': 'Already installed, switching...'})}\n\n"
+                ok, msg = switch_xray_version(version_key)
+                yield f"data: {_json.dumps({'type': 'done' if ok else 'error', 'msg': msg})}\n\n"
+                return
+
+            q: queue.Queue = queue.Queue()
+
+            def _run():
+                def _cb(pct: int, status: str):
+                    q.put({"type": "progress", "pct": pct, "msg": status})
+                r = download_with_progress(version_key, _cb)
+                q.put({"done": True, "ok": r[0], "msg": r[1]})
+
+            threading.Thread(target=_run, daemon=True).start()
+
+            while True:
+                item = q.get()
+                if item.get("done"):
+                    if item["ok"]:
+                        ok2, msg2 = switch_xray_version(version_key)
+                        yield f"data: {_json.dumps({'type': 'done' if ok2 else 'error', 'msg': msg2, 'pct': 100})}\n\n"
+                    else:
+                        yield f"data: {_json.dumps({'type': 'error', 'msg': item['msg']})}\n\n"
+                    break
+                yield f"data: {_json.dumps(item)}\n\n"
+
+        return Response(generate(), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.route("/status")
     def status():

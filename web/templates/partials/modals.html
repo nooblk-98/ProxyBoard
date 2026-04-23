@@ -191,6 +191,21 @@
   </div><!-- /.cfg-dialog -->
 </div><!-- /#edit-modal-scrim -->
 
+<!-- Download Progress Modal -->
+<div class="mdc-dialog-scrim" id="dl-modal-scrim" style="display:none; z-index: 300;">
+  <div class="mdc-dialog" onclick="event.stopPropagation()" style="max-width:420px; padding:32px 28px 24px; text-align:center;">
+    <div style="margin-bottom:16px;">
+      <i class="material-icons" style="font-size:40px; color:var(--mdc-theme-primary);">download</i>
+    </div>
+    <h2 class="mdc-dialog__title" style="border-bottom:none; padding:0 0 8px 0; font-size:1.1rem;" id="dl-modal-title">Downloading Xray Core</h2>
+    <p id="dl-modal-status" style="color:var(--text-muted); font-size:0.85rem; margin:0 0 20px; min-height:1.2em;"></p>
+    <div style="background:var(--mdc-border-color); border-radius:4px; height:6px; overflow:hidden; margin-bottom:12px;">
+      <div id="dl-progress-bar" style="height:100%; width:0%; background:var(--mdc-theme-primary); border-radius:4px; transition:width 0.3s ease;"></div>
+    </div>
+    <p id="dl-progress-pct" style="font-size:0.8rem; color:var(--text-muted); margin:0;"></p>
+  </div>
+</div>
+
 <!-- QR Modal -->
 <div class="mdc-dialog-scrim" id="qr-modal-scrim" onclick="closeQrModal(event)" style="display: none; z-index: 200;">
   <div class="mdc-dialog" onclick="event.stopPropagation()"
