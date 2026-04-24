@@ -7,6 +7,10 @@
 certs/
 certs/*
 !certs/.gitkeep
+*.pem
+*.key
+*.crt
+*.p12
 
 # Logs
 logs/
@@ -36,7 +40,37 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Temporary files
 tmp/
 temp/
 *.tmp
+_tmp/
+
+# Runtime data (generated at runtime, not source)
+/data/
+*.pid
+xray.version
+
+# Xray binaries (downloaded at runtime)
+/opt/xray/versions/
+xray-versions-local/
+
+# Backup files
+*.bak
+noobx-backup-*.json
