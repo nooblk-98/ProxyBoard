@@ -78,9 +78,11 @@ function drawSegmentedGauge(canvasId, value, color, label) {
   const filledTicks = Math.round((value / 100) * totalTicks);
   const isNetwork = (canvasId === 'uploadGauge' || canvasId === 'downloadGauge');
 
-  const ringInner = 62;
-  const ringOuter = 84;
-  const shortOuter = 79;
+  // Scale radii relative to canvas size so gauges fit at any resolution
+  const scale = Math.min(W, H) / 180;
+  const ringInner = Math.round(62 * scale);
+  const ringOuter = Math.round(84 * scale);
+  const shortOuter = Math.round(79 * scale);
 
   for (let i = 0; i < totalTicks; i++) {
     const angle = (i / totalTicks) * Math.PI * 2 - Math.PI / 2;
@@ -113,33 +115,37 @@ function drawSegmentedGauge(canvasId, value, color, label) {
   ctx.shadowBlur = 0;
 
   ctx.beginPath();
-  ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
+  ctx.arc(cx, cy, ringInner - Math.round(4 * scale), 0, Math.PI * 2);
   ctx.fillStyle = themeVars.gaugeInnerBg;
   ctx.fill();
 
   ctx.beginPath();
-  ctx.arc(cx, cy, ringInner - 4, 0, Math.PI * 2);
+  ctx.arc(cx, cy, ringInner - Math.round(4 * scale), 0, Math.PI * 2);
   ctx.strokeStyle = themeVars.gaugeRingBorder;
   ctx.lineWidth = 1;
   ctx.stroke();
 
   const numStr = isNetwork ? value.toFixed(1) : Math.round(value).toString();
   const unitStr = isNetwork ? 'KB/s' : '%';
+  const fontSize = Math.round(30 * scale);
+  const unitSize = Math.round(13 * scale);
+  const numOffsetY = Math.round(8 * scale);
+  const unitOffsetY = Math.round(14 * scale);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  ctx.font = 'bold 30px "Roboto", sans-serif';
+  ctx.font = `bold ${fontSize}px "Roboto", sans-serif`;
   ctx.fillStyle = themeVars.gaugeText;
   ctx.shadowColor = color;
   ctx.shadowBlur = 10;
-  ctx.fillText(numStr, cx, cy - 8);
+  ctx.fillText(numStr, cx, cy - numOffsetY);
 
-  ctx.font = '500 13px "Roboto", sans-serif';
+  ctx.font = `500 ${unitSize}px "Roboto", sans-serif`;
   ctx.fillStyle = themeVars.gaugeUnitText;
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
-  ctx.fillText(unitStr, cx, cy + 14);
+  ctx.fillText(unitStr, cx, cy + unitOffsetY);
 }
 
 function updateGauge(canvasId, value, type) {
