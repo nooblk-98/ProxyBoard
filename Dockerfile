@@ -31,4 +31,7 @@ WORKDIR /opt/xray-web
 
 EXPOSE 8088
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8088/healthz || exit 1
+
 CMD ["python3", "app.py"]

@@ -6,14 +6,19 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session, url_for
 
 try:
     import qrcode
 except Exception:
     qrcode = None
 
+import io
+
+from .auth import AUTH_ENABLED, login_required, register_auth_routes
+from .backup import export_backup, import_backup
 from .constants import CONFIG_PATH, DATA_DIR, DEFAULTS, DOMAIN, PID_PATH, XRAY_BIN
+from .log_reader import ACCESS_LOG, ERROR_LOG, stream_log, tail_file
 from .stats import get_active_ports, get_net_speed, get_sys_info, get_xray_stats
 from .store import (
     _coerce_int,
@@ -25,6 +30,7 @@ from .store import (
     write_config,
 )
 from .system import ensure_certs, ensure_dirs
+from .validator import validate_config
 from .xray_core import (
     _current_xray_key,
     _now_iso,
@@ -144,13 +150,13 @@ def _prepare_configs_data():
 
 
 def create_app() -> Flask:
-    # Get the parent directory of the ui module (which is web/)
     web_dir = Path(__file__).parent.parent
     app = Flask(__name__,
                 template_folder=str(web_dir / 'templates'),
                 static_folder=str(web_dir / 'static'))
 
-    # Suppress logging for status/health check endpoints
+    register_auth_routes(app)
+
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
@@ -161,11 +167,16 @@ def create_app() -> Flask:
         else:
             logging.getLogger('werkzeug').setLevel(logging.INFO)
 
+    @app.context_processor
+    def inject_auth():
+        return {"auth_enabled": AUTH_ENABLED}
+
     @app.route("/")
     def index():
         return redirect(url_for("dashboard"))
 
     @app.route("/dashboard")
+    @login_required
     def dashboard():
         status = get_status()
         xray_versions = list_xray_versions()
@@ -191,6 +202,7 @@ def create_app() -> Flask:
         )
 
     @app.route("/configurations")
+    @login_required
     def configurations():
         status = get_status()
         xray_versions = list_xray_versions()
@@ -231,6 +243,7 @@ def create_app() -> Flask:
         )
 
     @app.route("/settings")
+    @login_required
     def settings():
         status = get_status()
         xray_versions = list_xray_versions()
@@ -256,6 +269,7 @@ def create_app() -> Flask:
         )
 
     @app.route("/save", methods=["POST"])
+    @login_required
     def save():
         store = _load_store()
         edit_id = request.form.get("edit_id")
@@ -332,10 +346,12 @@ def create_app() -> Flask:
         return redirect(url_for("configurations", message="Config saved and Xray restarted."))
 
     @app.route("/new")
+    @login_required
     def new_config():
         return redirect(url_for("configurations", edit="new"))
 
     @app.route("/delete/<config_id>", methods=["POST"])
+    @login_required
     def delete_config(config_id: str):
         store = _load_store()
         original_len = len(store.get("configs", []))
@@ -354,6 +370,7 @@ def create_app() -> Flask:
         return redirect(url_for("configurations", error="Config not found."))
 
     @app.route("/toggle/<config_id>", methods=["POST"])
+    @login_required
     def toggle(config_id: str):
         store = _load_store()
         item = _find_config(store, config_id)
@@ -370,11 +387,13 @@ def create_app() -> Flask:
         return redirect(url_for("configurations", message=f"Config {'enabled' if item['enabled'] else 'disabled'}."))
 
     @app.route("/restart", methods=["POST"])
+    @login_required
     def restart():
         start_xray()
         return redirect(url_for("dashboard", message="Xray restarted."))
 
     @app.route("/xray/switch", methods=["POST"])
+    @login_required
     def switch_xray():
         version_key = request.form.get("xray_version", "").strip()
         if not version_key:
@@ -385,6 +404,7 @@ def create_app() -> Flask:
         return redirect(url_for("settings", error=msg))
 
     @app.route("/xray/install-stream/<version_key>")
+    @login_required
     def install_stream(version_key: str):
         import json as _json
         import queue
@@ -428,12 +448,84 @@ def create_app() -> Flask:
         return Response(generate(), mimetype="text/event-stream",
                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+    @app.route("/logs")
+    @login_required
+    def logs():
+        status = get_status()
+        xray_versions = list_xray_versions()
+        xray_current_key = _current_xray_key(xray_versions)
+        store, configs, active_count = _prepare_configs_data()
+        access_lines = tail_file(ACCESS_LOG)
+        error_lines = tail_file(ERROR_LOG)
+        return render_template(
+            "index.html",
+            page="logs",
+            status=status,
+            xray_versions=xray_versions,
+            xray_current_key=xray_current_key,
+            form=dict(DEFAULTS),
+            store=store,
+            active_count=active_count,
+            configs=configs,
+            edit_id=None,
+            summary=_summary,
+            message=None,
+            error=None,
+            DEFAULTS=DEFAULTS,
+            access_lines=access_lines,
+            error_lines=error_lines,
+        )
+
+    @app.route("/logs/stream/<log_type>")
+    @login_required
+    def log_stream(log_type: str):
+        path = ACCESS_LOG if log_type == "access" else ERROR_LOG
+        return Response(stream_log(path), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    @app.route("/backup/export")
+    @login_required
+    def backup_export():
+        data, filename = export_backup()
+        buf = io.BytesIO(data.encode("utf-8"))
+        buf.seek(0)
+        return send_file(buf, as_attachment=True, download_name=filename, mimetype="application/json")
+
+    @app.route("/backup/import", methods=["POST"])
+    @login_required
+    def backup_import():
+        f = request.files.get("backup_file")
+        if not f:
+            return redirect(url_for("settings", error="No file uploaded."))
+        try:
+            raw = f.read().decode("utf-8")
+        except Exception:
+            return redirect(url_for("settings", error="Could not read uploaded file."))
+        ok, msg = import_backup(raw)
+        if not ok:
+            return redirect(url_for("settings", error=msg))
+        store = _load_store()
+        config = build_config(store.get("configs", []))
+        write_config(config)
+        start_xray()
+        return redirect(url_for("configurations", message=msg))
+
+    @app.route("/config/validate", methods=["POST"])
+    @login_required
+    def config_validate():
+        store = _load_store()
+        config = build_config(store.get("configs", []))
+        ok, msg = validate_config(config)
+        return jsonify({"ok": ok, "msg": msg})
+
     @app.route("/status")
     def status():
         return jsonify(get_status())
 
     @app.route("/healthz")
     def healthz():
-        return jsonify({"ok": True, "time": _now_iso()})
+        running = is_xray_running()
+        code = 200 if running else 503
+        return jsonify({"ok": running, "time": _now_iso()}), code
 
     return app

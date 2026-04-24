@@ -520,6 +520,85 @@ if (refreshEnabled && document.getElementById('trafficChart')) {
   pollStatus();
 }
 
+// ── Log Viewer ────────────────────────────────────────────────
+let _logEs = null;
+let _currentLogType = 'access';
+
+function switchLog(type, btn) {
+  document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _currentLogType = type;
+  const viewer = document.getElementById('log-viewer');
+  if (viewer) viewer.innerHTML = '';
+  if (document.getElementById('log-live-toggle')?.checked) {
+    startLogStream(type);
+  }
+}
+
+function startLogStream(type) {
+  if (_logEs) { _logEs.close(); _logEs = null; }
+  const viewer = document.getElementById('log-viewer');
+  if (!viewer) return;
+
+  _logEs = new EventSource(`/logs/stream/${type}`);
+  _logEs.onmessage = function (e) {
+    if (!e.data || e.data === 'ping') return;
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    const lower = e.data.toLowerCase();
+    if (lower.includes('error') || lower.includes('fail')) line.classList.add('log-line--error');
+    else if (lower.includes('warn')) line.classList.add('log-line--warn');
+    line.textContent = e.data;
+    viewer.appendChild(line);
+    viewer.scrollTop = viewer.scrollHeight;
+  };
+}
+
+function clearLogView() {
+  const viewer = document.getElementById('log-viewer');
+  if (viewer) viewer.innerHTML = '';
+}
+
+const logLiveToggle = document.getElementById('log-live-toggle');
+if (logLiveToggle) {
+  if (logLiveToggle.checked) startLogStream(_currentLogType);
+  logLiveToggle.addEventListener('change', e => {
+    if (e.target.checked) {
+      startLogStream(_currentLogType);
+    } else {
+      if (_logEs) { _logEs.close(); _logEs = null; }
+    }
+  });
+}
+
+// ── Config Validate ───────────────────────────────────────────
+async function validateConfig() {
+  const btn = document.querySelector('[onclick="validateConfig()"]');
+  const result = document.getElementById('validate-result');
+  if (!result) return;
+  if (btn) btn.disabled = true;
+  result.style.display = 'block';
+  result.style.background = 'var(--mdc-theme-surface-2)';
+  result.style.color = 'var(--mdc-theme-text-secondary-on-background)';
+  result.textContent = 'Validating...';
+  try {
+    const res = await fetch('/config/validate', { method: 'POST' });
+    const data = await res.json();
+    result.textContent = data.msg;
+    result.style.background = data.ok
+      ? 'rgba(76,175,80,0.12)'
+      : 'rgba(207,102,121,0.12)';
+    result.style.color = data.ok
+      ? 'var(--mdc-theme-success)'
+      : 'var(--mdc-theme-error)';
+  } catch {
+    result.textContent = 'Request failed.';
+    result.style.color = 'var(--mdc-theme-error)';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // Xray version switch with download progress
 const switchForm = document.querySelector('form[action="/xray/switch"]');
 if (switchForm) {

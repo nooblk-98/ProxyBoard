@@ -181,6 +181,29 @@
           </div>
         </section>
 
+        <!-- LOGS SECTION -->
+        <section id="section-logs" class="content-section {% if page == 'logs' %}active{% endif %}">
+          <div class="log-toolbar">
+            <div class="log-tab-group">
+              <button class="log-tab active" onclick="switchLog('access', this)">Access Log</button>
+              <button class="log-tab" onclick="switchLog('error', this)">Error Log</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <label class="mdc-switch" title="Live tail">
+                <input type="checkbox" class="mdc-switch__native-control" role="switch" id="log-live-toggle" checked>
+                <div class="mdc-switch__background"><div class="mdc-switch__knob"></div></div>
+              </label>
+              <span style="font-size:0.8rem;color:var(--mdc-theme-text-secondary-on-background);">Live</span>
+              <button class="mdc-icon-button" onclick="clearLogView()" title="Clear view"><i class="material-icons">clear_all</i></button>
+            </div>
+          </div>
+          <div class="log-viewer" id="log-viewer">
+            {% if page == 'logs' %}
+              {% for line in access_lines %}<div class="log-line">{{ line }}</div>{% endfor %}
+            {% endif %}
+          </div>
+        </section>
+
         <!-- SETTINGS SECTION -->
         <section id="section-settings" class="content-section {% if page == 'settings' %}active{% endif %}">
           <h5 class="section-title">System Settings</h5>
@@ -306,6 +329,49 @@
                 <i class="material-icons">info</i> Self-signed TLS certificates are generated on first run at
                 <code>/data/certs</code>. Replace them for production use.
               </p>
+            </div>
+
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">Backup & Restore</h6>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Export Configs</div>
+                  <div class="settings-row-help">Download all configurations as a JSON backup file.</div>
+                </div>
+                <a href="/backup/export" class="mdc-button mdc-button--outlined">
+                  <i class="material-icons mdc-button__icon">download</i>
+                  <span class="mdc-button__label">Export</span>
+                </a>
+              </div>
+              <div class="divider"></div>
+              <div class="settings-row settings-row--form">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Import Configs</div>
+                  <div class="settings-row-help">Restore from a previously exported backup. This will overwrite current configs.</div>
+                </div>
+                <form method="post" action="/backup/import" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
+                  <input type="file" name="backup_file" accept=".json" class="cfg-input" style="max-width:200px;padding:6px 8px;font-size:0.8rem;" required />
+                  <button type="submit" class="mdc-button mdc-button--raised mdc-button--primary" onclick="return confirm('This will overwrite your current configs. Continue?')">
+                    <i class="material-icons mdc-button__icon">upload</i>
+                    <span class="mdc-button__label">Restore</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="mdc-card settings-card">
+              <h6 class="settings-subtitle">Config Validation</h6>
+              <div class="settings-row">
+                <div class="settings-row-info">
+                  <div class="settings-row-title">Validate Current Config</div>
+                  <div class="settings-row-help">Run Xray's built-in config test against the active configuration.</div>
+                </div>
+                <button type="button" class="mdc-button mdc-button--outlined" onclick="validateConfig()">
+                  <i class="material-icons mdc-button__icon">rule</i>
+                  <span class="mdc-button__label">Validate</span>
+                </button>
+              </div>
+              <div id="validate-result" style="display:none;margin-top:12px;padding:10px 14px;border-radius:6px;font-size:0.85rem;font-family:monospace;"></div>
             </div>
 
             <div class="mdc-card settings-card">

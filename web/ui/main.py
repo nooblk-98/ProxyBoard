@@ -4,7 +4,8 @@ from .constants import CONFIG_PATH, DEFAULTS
 from .routes import create_app
 from .store import _load_store, _save_store, build_config, write_config
 from .system import ensure_dirs, ensure_certs
-from .xray_core import start_xray
+from .watchdog import start_watchdog
+from .xray_core import is_xray_running, start_xray
 
 
 def bootstrap() -> None:
@@ -22,6 +23,7 @@ def bootstrap() -> None:
             ensure_certs(c["domain"])
         write_config(build_config(store.get("configs", [])))
     start_xray()
+    start_watchdog(is_xray_running, start_xray)
 
 
 def get_app():

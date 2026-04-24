@@ -20,6 +20,11 @@
         <i class="material-icons mdc-list-item__graphic" aria-hidden="true">settings</i>
         <span class="mdc-list-item__text">Settings</span>
       </a>
+      <a class="mdc-list-item {{ 'mdc-list-item--activated' if page == 'logs' else '' }}" href="{{ url_for('logs') }}">
+        <span class="mdc-list-item__ripple"></span>
+        <i class="material-icons mdc-list-item__graphic" aria-hidden="true">article</i>
+        <span class="mdc-list-item__text">Logs</span>
+      </a>
     </nav>
   </div>
   <div class="drawer-footer">
@@ -27,5 +32,13 @@
       <i class="material-icons">{{ 'check_circle' if status.running else 'error' }}</i>
       {{ 'Engine Running' if status.running else 'Engine Stopped' }}
     </div>
+    {% if auth_enabled %}
+    <form method="post" action="/logout" style="margin-top:8px;">
+      <button type="submit" class="mdc-button" style="width:100%; color:var(--mdc-theme-text-secondary-on-background); font-size:0.8rem;">
+        <i class="material-icons mdc-button__icon" style="font-size:16px;">logout</i>
+        <span class="mdc-button__label">Sign Out</span>
+      </button>
+    </form>
+    {% endif %}
   </div>
 </aside>
