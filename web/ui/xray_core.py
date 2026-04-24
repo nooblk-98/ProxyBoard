@@ -259,8 +259,13 @@ def start_xray() -> None:
     stop_xray()
     if not CONFIG_PATH.exists():
         return
-    _xray_process = subprocess.Popen([str(XRAY_BIN), "-c", str(CONFIG_PATH)])
-    PID_PATH.write_text(str(_xray_process.pid), encoding="utf-8")
+    if not XRAY_BIN.exists():
+        return
+    try:
+        _xray_process = subprocess.Popen([str(XRAY_BIN), "-c", str(CONFIG_PATH)])
+        PID_PATH.write_text(str(_xray_process.pid), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def switch_xray_version(version_key: str) -> tuple[bool, str]:
