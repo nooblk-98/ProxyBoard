@@ -88,6 +88,56 @@ docker compose pull && docker compose up -d
 
 ---
 
+### Option 3 — Production (Nginx + Let's Encrypt SSL)
+
+Use `docker-compose-live.yml` for a fully production-ready setup with automatic HTTPS via Certbot.
+
+**Stack:**
+| Service | Role |
+|---|---|
+| `proxyboard` | App (internal, port 8088) |
+| `nginx` | Reverse proxy, HTTP→HTTPS redirect, SSL termination |
+| `certbot` | Obtains & auto-renews Let's Encrypt certificate |
+
+**Requirements:**
+- Domain DNS A record pointing to your server IP
+- Ports **80** and **443** open on your server
+
+**Step 1 — Clone and configure**
+
+```bash
+git clone https://github.com/nooblk-98/ProxyBoard.git
+cd ProxyBoard
+cp .env.example .env
+nano .env
+```
+
+Set your values in `.env`:
+
+```env
+DOMAIN=yourdomain.com
+CERTBOT_EMAIL=you@example.com
+# Optional login protection
+# UI_USERNAME=admin
+# UI_PASSWORD=yourpassword
+```
+
+**Step 2 — Start**
+
+```bash
+docker compose -f docker-compose-live.yml up -d
+```
+
+Certbot will automatically obtain a certificate on first start and renew it every 12 hours. The UI will be available at `https://yourdomain.com`.
+
+**Update to latest image:**
+
+```bash
+docker compose -f docker-compose-live.yml pull && docker compose -f docker-compose-live.yml up -d
+```
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |
