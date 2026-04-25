@@ -9,6 +9,7 @@ services:
       - "8088"
     volumes:
       - proxyboard-data:/data
+      - certbot-certs:/etc/letsencrypt:ro
     environment:
       - UI_PORT=8088
       - XRAY_DOMAIN=${DOMAIN}
