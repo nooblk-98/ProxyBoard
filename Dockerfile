@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     openssl \
+    certbot \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
