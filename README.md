@@ -1,4 +1,4 @@
-# NoobX-UI — Xray Dashboard
+# ProxyBoard — Xray Dashboard
 
 A modern web UI for managing Xray-core VPN configurations with real-time monitoring, live traffic stats, log viewer, and one-command Docker deployment.
 
@@ -10,13 +10,13 @@ A modern web UI for managing Xray-core VPN configurations with real-time monitor
 
 ```bash
 docker run -d \
-  --name noobx-ui \
+  --name proxyboard \
   --restart unless-stopped \
   -p 8088:8088 \
-  -v noobx-data:/data \
+  -v proxyboard-data:/data \
   -e XRAY_DOMAIN=yourdomain.com \
   -e UI_PORT=8088 \
-  lahiru98s/noobx-ui:latest
+  lahiru98s/proxyboard:latest
 ```
 
 Open the UI at `http://your-server-ip:8088`
@@ -25,26 +25,26 @@ Open the UI at `http://your-server-ip:8088`
 
 ```bash
 docker run -d \
-  --name noobx-ui \
+  --name proxyboard \
   --restart unless-stopped \
   -p 8088:8088 \
-  -v noobx-data:/data \
+  -v proxyboard-data:/data \
   -e XRAY_DOMAIN=yourdomain.com \
   -e UI_USERNAME=admin \
   -e UI_PASSWORD=yourpassword \
-  lahiru98s/noobx-ui:latest
+  lahiru98s/proxyboard:latest
 ```
 
 #### Using GHCR image
 
 ```bash
 docker run -d \
-  --name noobx-ui \
+  --name proxyboard \
   --restart unless-stopped \
   -p 8088:8088 \
-  -v noobx-data:/data \
+  -v proxyboard-data:/data \
   -e XRAY_DOMAIN=yourdomain.com \
-  ghcr.io/nooblk-98/noobx-ui:latest
+  ghcr.io/nooblk-98/proxyboard:latest
 ```
 
 ---
@@ -55,14 +55,14 @@ Create a `docker-compose.yml`:
 
 ```yaml
 services:
-  noobx-ui:
-    image: lahiru98s/noobx-ui:latest
-    container_name: noobx-ui
+  proxyboard:
+    image: lahiru98s/proxyboard:latest
+    container_name: proxyboard
     restart: unless-stopped
     ports:
       - "8088:8088"
     volumes:
-      - noobx-data:/data
+      - proxyboard-data:/data
     environment:
       - XRAY_DOMAIN=yourdomain.com
       - UI_PORT=8088
@@ -71,7 +71,7 @@ services:
       # - UI_PASSWORD=yourpassword
 
 volumes:
-  noobx-data:
+  proxyboard-data:
 ```
 
 Then run:
@@ -121,7 +121,7 @@ docker compose pull && docker compose up -d
 
 ## Data & Certificates
 
-All runtime data is stored in `/data` inside the container (mapped to the `noobx-data` volume):
+All runtime data is stored in `/data` inside the container (mapped to the `proxyboard-data` volume):
 
 ```
 /data/

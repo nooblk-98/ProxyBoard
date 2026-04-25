@@ -22,7 +22,7 @@ def import_backup(raw: str) -> tuple[bool, str]:
         return False, f"Invalid JSON: {e}"
 
     if not isinstance(payload, dict) or "configs" not in payload:
-        return False, "Missing 'configs' key — not a valid NoobX backup."
+        return False, "Missing 'configs' key — not a valid ProxyBoard backup."
 
     if not isinstance(payload["configs"], list):
         return False, "'configs' must be a list."
