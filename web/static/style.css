@@ -155,7 +155,7 @@ a {
 }
 
 .mdc-drawer__header {
-  padding: 24px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--mdc-border-color);
 }
 
@@ -2268,7 +2268,7 @@ a {
 
 .sidebar-logo {
   width: 100%;
-  max-width: 140px;
+  max-width: 80px;
   height: auto;
   display: block;
 }
