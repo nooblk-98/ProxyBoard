@@ -1,9 +1,11 @@
 FROM python:3.12-slim
 
-ENV XRAY_DATA_DIR=/data
-ENV XRAY_VERSIONS_DIR=/opt/xray/versions
-ENV XRAY_VERSIONS_CONFIG=/opt/xray/versions.json
-ENV UI_PORT=8088
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    XRAY_DATA_DIR=/data \
+    XRAY_VERSIONS_DIR=/opt/xray/versions \
+    XRAY_VERSIONS_CONFIG=/opt/xray/versions.json \
+    UI_PORT=8088
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -12,20 +14,23 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir flask==3.0.3 qrcode==7.4.2 pillow==10.4.0
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 RUN mkdir -p /opt/xray/versions /opt/xray-web /data
 
 COPY config.default.json /opt/xray/config.default.json
 COPY xray-versions.json /opt/xray/versions.json
 COPY scripts/ /opt/xray/scripts/
-COPY web/ /opt/xray-web/
 
-# Download only the default (latest) Xray version at build time
 RUN python3 /opt/xray/scripts/download_xray_versions.py --only-default
 
-# Set default Xray core (matches first entry in versions.json)
-RUN ln -sf /opt/xray/versions/v26.2.6/xray /usr/local/bin/xray && chmod +x /usr/local/bin/xray
+RUN XRAY_VER=$(python3 -c "import json; d=json.load(open('/opt/xray/versions.json')); \
+    print(d[0]['version'] if isinstance(d, list) else list(d.values())[0]['version'])") \
+    && ln -sf /opt/xray/versions/${XRAY_VER}/xray /usr/local/bin/xray \
+    && chmod +x /usr/local/bin/xray
+
+COPY app/ /opt/xray-web/
 
 WORKDIR /opt/xray-web
 

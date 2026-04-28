@@ -1,18 +1,18 @@
 services:
-  xray-web:
+  proxyboard:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: xray-web
+    container_name: proxyboard
     restart: unless-stopped
     network_mode: host
     environment:
       - UI_PORT=8088
       - XRAY_DOMAIN=vpn.itsnooblk.com
     volumes:
-      - xray-data:/data
+      - proxyboard-data:/data
     cap_add:
       - NET_BIND_SERVICE
 
 volumes:
-  xray-data:
+  proxyboard-data:

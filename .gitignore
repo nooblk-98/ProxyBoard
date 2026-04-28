@@ -64,6 +64,7 @@ _tmp/
 
 # Runtime data (generated at runtime, not source)
 /data/
+xray-configs/
 *.pid
 xray.version
 

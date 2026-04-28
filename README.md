@@ -62,6 +62,61 @@ docker compose pull && docker compose up -d
 
 ---
 
+## Run without Docker
+
+### Prerequisites
+
+- Python 3.10+
+- `openssl` installed (for auto-generated certs)
+- Linux (Xray binaries are Linux-only)
+
+### 1. Clone and install dependencies
+
+```bash
+git clone https://github.com/nooblk-98/NoobX-UI.git
+cd NoobX-UI
+pip install -r requirements.txt
+```
+
+### 2. Download Xray binary
+
+```bash
+python3 scripts/download_xray_versions.py --only-default
+```
+
+This downloads the default Xray version into `~/.local/share/xray/versions/` (or the path set by `XRAY_VERSIONS_DIR`).
+
+### 3. Set environment variables
+
+```bash
+export XRAY_DOMAIN=yourdomain.com
+export UI_PORT=8088
+export XRAY_DATA_DIR=./data
+export XRAY_VERSIONS_DIR=./data/xray/versions
+export XRAY_VERSIONS_CONFIG=./xray-versions.json
+# Optional auth
+# export UI_USERNAME=admin
+# export UI_PASSWORD=yourpassword
+```
+
+Or copy `.env.example` to `.env` and edit it, then source it:
+
+```bash
+cp .env.example .env
+# edit .env
+set -a && source .env && set +a
+```
+
+### 4. Run the app
+
+```bash
+python3 app/app.py
+```
+
+Open the UI at `http://localhost:8088`
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |

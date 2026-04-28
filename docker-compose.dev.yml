@@ -1,0 +1,8 @@
+services:
+  proxyboard:
+    volumes:
+      - ./app:/opt/xray-web
+      - proxyboard-data:/data
+    environment:
+      - FLASK_DEBUG=1
+      - UI_PORT=8088
