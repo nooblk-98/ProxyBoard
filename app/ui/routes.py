@@ -152,8 +152,8 @@ def _prepare_configs_data():
         if c.get("ws_enabled"):
             url = _vless_link(name, domain, c["ws_port"], c["ws_uuid"], c["ws_path"], False, ws_host) if proto == "vless" else _vmess_link(name, domain, c["ws_port"], c["ws_uuid"], c["ws_path"], False, ws_host)
             c["links"].append({"label": "WebSocket (No TLS)", "url": url, "qr": _qr_data(url)})
-        if c.get("socks5_enabled"):
-            url = _socks5_link(name, domain, c["socks5_port"], c.get("socks5_username", ""), c.get("socks5_password", ""))
+        if proto == "socks":
+            url = _socks5_link(name, domain, c.get("socks5_port", 1080), c.get("socks5_username", ""), c.get("socks5_password", ""))
             c["links"].append({"label": "SOCKS5", "url": url, "qr": _qr_data(url)})
 
     return store, configs, active_count
@@ -306,10 +306,12 @@ def create_app() -> Flask:
             "dns": request.form.get("dns", DEFAULTS["dns"]).strip() or DEFAULTS["dns"],
             "fingerprint": request.form.get("fingerprint", DEFAULTS["fingerprint"]).strip() or DEFAULTS["fingerprint"],
             "alpn": request.form.get("alpn", DEFAULTS["alpn"]).strip() or DEFAULTS["alpn"],
-            "socks5_enabled": request.form.get("socks5_enabled") == "1",
             "socks5_username": request.form.get("socks5_username", DEFAULTS["socks5_username"]).strip(),
             "socks5_password": request.form.get("socks5_password", "").strip(),
         }
+
+        is_socks = form["protocol"] == "socks"
+        form["socks5_enabled"] = is_socks
 
         try:
             if form["ws_enabled"]:
@@ -320,14 +322,14 @@ def create_app() -> Flask:
                 form["tls_port"] = _coerce_int(request.form.get("tls_port", ""), "TLS port")
             else:
                 form["tls_port"] = DEFAULTS["tls_port"]
-            if form["socks5_enabled"]:
+            if is_socks:
                 form["socks5_port"] = _coerce_int(request.form.get("socks5_port", ""), "SOCKS5 port")
             else:
                 form["socks5_port"] = DEFAULTS["socks5_port"]
         except ValueError as exc:
             return redirect(url_for("configurations", error=str(exc), edit=edit_id or "new"))
 
-        if not form["ws_enabled"] and not form["tls_enabled"] and not form["socks5_enabled"]:
+        if not is_socks and not form["ws_enabled"] and not form["tls_enabled"]:
             return redirect(url_for("configurations", error="Enable at least one inbound (WS, WS+TLS, or SOCKS5).", edit=edit_id or "new"))
 
         for other_config in store.get("configs", []):

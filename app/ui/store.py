@@ -70,7 +70,7 @@ def load_form_state() -> dict:
         if inbound.get("protocol") == "socks":
             accounts = settings.get("accounts", [])
             account = accounts[0] if accounts else {}
-            data["socks5_enabled"] = True
+            data["protocol"] = "socks"
             data["socks5_port"] = inbound.get("port", data["socks5_port"])
             data["socks5_username"] = account.get("user", data["socks5_username"])
             data["socks5_password"] = account.get("pass", data["socks5_password"])
@@ -123,7 +123,7 @@ def _summary(item: dict) -> str:
         parts.append(f"WS:{item.get('ws_port')}")
     if item.get("tls_enabled"):
         parts.append(f"WS+TLS:{item.get('tls_port')}")
-    if item.get("socks5_enabled"):
+    if item.get("protocol") == "socks":
         parts.append(f"SOCKS5:{item.get('socks5_port')}")
     return " | ".join(parts) if parts else "Disabled"
 
@@ -135,12 +135,32 @@ def build_config(configs: list) -> dict:
             continue
 
         domain = form["domain"]
+        protocol = form.get("protocol", "vless")
+        cid = form.get("id", "")
+
+        if protocol == "socks":
+            socks_entry: dict = {
+                "port": form.get("socks5_port", 1080),
+                "listen": "0.0.0.0",
+                "protocol": "socks",
+                "tag": f"socks5-{cid}",
+                "settings": {
+                    "auth": "password",
+                    "accounts": [{"user": form.get("socks5_username", "socks5user"), "pass": form.get("socks5_password", "")}],
+                    "udp": True,
+                },
+                "sniffing": {"enabled": True, "destOverride": ["http", "tls"], "metadataOnly": False},
+            }
+            if not form.get("socks5_password"):
+                socks_entry["settings"]["auth"] = "noauth"
+                del socks_entry["settings"]["accounts"]
+            inbounds.append(socks_entry)
+            continue
+
         ws_enabled = form.get("ws_enabled", False)
         tls_enabled = form.get("tls_enabled", False)
         ws_host = form.get("ws_host", domain)
         tls_host = form.get("tls_host", domain)
-        protocol = form.get("protocol", "vless")
-        cid = form.get("id", "")
 
         if ws_enabled:
             ws_client = {
@@ -223,33 +243,6 @@ def build_config(configs: list) -> dict:
                     },
                 }
             )
-
-    for form in configs:
-        if not form.get("enabled", True):
-            continue
-        if form.get("socks5_enabled"):
-            cid = form.get("id", "")
-            socks5_entry: dict = {
-                "port": form.get("socks5_port", 1080),
-                "listen": "0.0.0.0",
-                "protocol": "socks",
-                "tag": f"socks5-{cid}",
-                "settings": {
-                    "auth": "password",
-                    "accounts": [
-                        {
-                            "user": form.get("socks5_username", "socks5user"),
-                            "pass": form.get("socks5_password", ""),
-                        }
-                    ],
-                    "udp": True,
-                },
-                "sniffing": {"enabled": True, "destOverride": ["http", "tls"], "metadataOnly": False},
-            }
-            if not form.get("socks5_password"):
-                socks5_entry["settings"]["auth"] = "noauth"
-                socks5_entry["settings"].pop("accounts", None)
-            inbounds.append(socks5_entry)
 
     inbounds.append(
         {

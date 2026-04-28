@@ -38,7 +38,6 @@ DEFAULTS = {
     "dns": "1.1.1.1",
     "fingerprint": "randomized",
     "alpn": "h2,h3,http/1.1",
-    "socks5_enabled": False,
     "socks5_port": 1080,
     "socks5_username": "socks5user",
     "socks5_password": "",

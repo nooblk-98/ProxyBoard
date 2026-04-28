@@ -166,7 +166,7 @@
                   <td class="dash-traffic-speed" id="speed-tls-{{ item.tls_email }}">—</td>
                 </tr>
                 {% endif %}
-                {% if item.socks5_enabled %}
+                {% if item.protocol == 'socks' %}
                 <tr>
                   <td class="dash-traffic-name">{{ item.name }}</td>
                   <td><span class="dash-badge" style="background:var(--mdc-theme-secondary,#7c4dff);color:#fff;">SOCKS5</span></td>

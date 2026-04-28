@@ -61,13 +61,11 @@ function openEditModal(editId) {
   form.elements['alpn'].value = data.alpn || 'h2,h3,http/1.1';
   form.elements['dns'].value = data.dns || '1.1.1.1';
 
-  form.elements['socks5_enabled'].checked = !!data.socks5_enabled;
   form.elements['socks5_port'].value = data.socks5_port || 1080;
   form.elements['socks5_username'].value = data.socks5_username || '';
   form.elements['socks5_password'].value = data.socks5_password || '';
 
-  toggleTransport();
-  toggleSocks5();
+  toggleProtocol();
   document.getElementById('edit-modal-scrim').style.display = 'flex';
 }
 
@@ -518,12 +516,19 @@ function closeQrModalDirect() {
   document.getElementById("qr-modal-scrim").style.display = "none";
 }
 
-function toggleSocks5() {
-  const cb = document.querySelector('input[name="socks5_enabled"]');
-  const fields = document.getElementById('socks5_fields');
-  if (cb && fields) {
-    fields.style.display = cb.checked ? 'grid' : 'none';
-  }
+function toggleProtocol() {
+  const proto = document.querySelector('select[name="protocol"]');
+  if (!proto) return;
+  const isSocks = proto.value === 'socks';
+  const transportField = document.getElementById('transport_field');
+  const wsSection = document.getElementById('ws_section');
+  const tlsSection = document.getElementById('tls_section');
+  const socks5Section = document.getElementById('socks5_section');
+  if (transportField) transportField.style.display = isSocks ? 'none' : '';
+  if (wsSection) wsSection.style.display = isSocks ? 'none' : '';
+  if (tlsSection) tlsSection.style.display = isSocks ? 'none' : '';
+  if (socks5Section) socks5Section.style.display = isSocks ? 'block' : 'none';
+  if (!isSocks) toggleTransport();
 }
 
 function toggleTransport() {
