@@ -22,14 +22,11 @@ from .log_reader import ACCESS_LOG, ERROR_LOG, stream_log, tail_file
 from .stats import get_active_ports, get_net_speed, get_sys_info, get_xray_stats
 from .store import (
     _coerce_int,
-    _find_config,
-    _load_store,
-    _save_store,
     _summary,
-    build_config,
-    write_config,
 )
-from .system import ensure_certs, ensure_dirs, regenerate_self_signed, save_manual_cert_paths
+from .xray_config_builder import build_xray_config
+from .config_persistence import ConfigPersistence
+from .system import regenerate_self_signed, save_manual_cert_paths
 from .validator import validate_config
 from .xray_core import (
     _current_xray_key,
@@ -76,13 +73,16 @@ def _vless_link(name: str, domain: str, port: int, uuid: str, path: str, tls: bo
 def _qr_data(url: str) -> str | None:
     if qrcode is None:
         return None
-    qr = qrcode.QRCode(border=2, box_size=4)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+    try:
+        qr = qrcode.QRCode(border=2, box_size=4)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return None
 
 
 def get_status() -> dict:
@@ -124,9 +124,9 @@ def get_status() -> dict:
     }
 
 
-def _prepare_configs_data():
+def _prepare_configs_data(persistence):
     """Helper function to prepare configuration data"""
-    store = _load_store()
+    store = persistence.get_store()
     active_count = 0
     configs = store.get("configs", [])
     for c in configs:
@@ -157,6 +157,8 @@ def create_app() -> Flask:
 
     register_auth_routes(app)
 
+    persistence = ConfigPersistence(DATA_DIR)
+
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
     @app.context_processor
@@ -173,7 +175,7 @@ def create_app() -> Flask:
         status = get_status()
         xray_versions = list_xray_versions()
         xray_current_key = _current_xray_key(xray_versions)
-        store, configs, active_count = _prepare_configs_data()
+        store, configs, active_count = _prepare_configs_data(persistence)
         message = request.args.get("message")
         error = request.args.get("error")
         return render_template(
@@ -199,13 +201,13 @@ def create_app() -> Flask:
         status = get_status()
         xray_versions = list_xray_versions()
         xray_current_key = _current_xray_key(xray_versions)
-        store, configs, active_count = _prepare_configs_data()
+        store, configs, active_count = _prepare_configs_data(persistence)
         edit_id = request.args.get("edit")
 
         if edit_id == "new":
             form_state = dict(DEFAULTS)
         elif edit_id:
-            found = _find_config(store, edit_id)
+            found = next((c for c in configs if c.get("id") == edit_id), None)
             if found:
                 form_state = dict(found)
                 if "protocol" not in form_state:
@@ -240,7 +242,7 @@ def create_app() -> Flask:
         status = get_status()
         xray_versions = list_xray_versions()
         xray_current_key = _current_xray_key(xray_versions)
-        store, configs, active_count = _prepare_configs_data()
+        store, configs, active_count = _prepare_configs_data(persistence)
         message = request.args.get("message")
         error = request.args.get("error")
         return render_template(
@@ -263,7 +265,6 @@ def create_app() -> Flask:
     @app.route("/save", methods=["POST"])
     @login_required
     def save():
-        store = _load_store()
         edit_id = request.form.get("edit_id")
         if edit_id == "new":
             edit_id = None
@@ -305,40 +306,14 @@ def create_app() -> Flask:
         if not form["ws_enabled"] and not form["tls_enabled"]:
             return redirect(url_for("configurations", error="Enable at least one inbound.", edit=edit_id or "new"))
 
-        if form["ws_enabled"] and form["tls_enabled"] and form["ws_port"] == form["tls_port"]:
-            return redirect(url_for("configurations", error="WS and TLS ports must be different within the same config.", edit=edit_id or "new"))
-
-        for other_config in store.get("configs", []):
-            if other_config.get("id") == form["id"]:
-                continue
-            if form["ws_enabled"] and other_config.get("ws_enabled"):
-                if form["ws_port"] == other_config.get("ws_port"):
-                    return redirect(url_for("configurations", error=f"Port {form['ws_port']} is already used by '{other_config.get('name')}'", edit=edit_id or "new"))
-            if form["tls_enabled"] and other_config.get("tls_enabled"):
-                if form["tls_port"] == other_config.get("tls_port"):
-                    return redirect(url_for("configurations", error=f"Port {form['tls_port']} is already used by '{other_config.get('name')}'", edit=edit_id or "new"))
-            if form["ws_enabled"] and other_config.get("tls_enabled"):
-                if form["ws_port"] == other_config.get("tls_port"):
-                    return redirect(url_for("configurations", error=f"Port {form['ws_port']} is already used by '{other_config.get('name')}'", edit=edit_id or "new"))
-            if form["tls_enabled"] and other_config.get("ws_enabled"):
-                if form["tls_port"] == other_config.get("ws_port"):
-                    return redirect(url_for("configurations", error=f"Port {form['tls_port']} is already used by '{other_config.get('name')}'", edit=edit_id or "new"))
-
-        existing = _find_config(store, form["id"])
-        if existing:
-            form["enabled"] = existing.get("enabled", True)
-            existing.update(form)
+        if edit_id:
+            result = persistence.update(edit_id, form)
         else:
-            form["enabled"] = True
-            store.setdefault("configs", []).append(form)
+            result = persistence.add(form)
 
-        ensure_dirs()
-        ensure_certs(form["domain"])
-        config = build_config(store.get("configs", []))
-        write_config(config)
-        _save_store(store)
-        start_xray()
-        return redirect(url_for("configurations", message="Config saved and Xray restarted."))
+        if result.success:
+            return redirect(url_for("configurations", message=result.message))
+        return redirect(url_for("configurations", error=result.message, edit=edit_id or "new"))
 
     @app.route("/new")
     @login_required
@@ -348,38 +323,18 @@ def create_app() -> Flask:
     @app.route("/delete/<config_id>", methods=["POST"])
     @login_required
     def delete_config(config_id: str):
-        store = _load_store()
-        original_len = len(store.get("configs", []))
-
-        if original_len <= 1:
-            return redirect(url_for("configurations", error="Cannot delete the last configuration. At least one config must exist."))
-
-        store["configs"] = [c for c in store.get("configs", []) if c.get("id") != config_id]
-        if len(store["configs"]) < original_len:
-            ensure_dirs()
-            config = build_config(store.get("configs", []))
-            write_config(config)
-            _save_store(store)
-            start_xray()
-            return redirect(url_for("configurations", message="Config deleted."))
-        return redirect(url_for("configurations", error="Config not found."))
+        result = persistence.delete(config_id)
+        if result.success:
+            return redirect(url_for("configurations", message=result.message))
+        return redirect(url_for("configurations", error=result.message))
 
     @app.route("/toggle/<config_id>", methods=["POST"])
     @login_required
     def toggle(config_id: str):
-        store = _load_store()
-        item = _find_config(store, config_id)
-        if not item:
-            return redirect(url_for("configurations", error="Config not found."))
-
-        item["enabled"] = not item.get("enabled", True)
-        ensure_dirs()
-        ensure_certs(item["domain"])
-        config = build_config(store.get("configs", []))
-        write_config(config)
-        _save_store(store)
-        start_xray()
-        return redirect(url_for("configurations", message=f"Config {'enabled' if item['enabled'] else 'disabled'}."))
+        result = persistence.toggle(config_id)
+        if result.success:
+            return redirect(url_for("configurations", message=result.message))
+        return redirect(url_for("configurations", error=result.message))
 
     @app.route("/restart", methods=["POST"])
     @login_required
@@ -445,7 +400,7 @@ def create_app() -> Flask:
         status = get_status()
         xray_versions = list_xray_versions()
         xray_current_key = _current_xray_key(xray_versions)
-        store, configs, active_count = _prepare_configs_data()
+        store, configs, active_count = _prepare_configs_data(persistence)
         access_lines = tail_file(ACCESS_LOG)
         error_lines = tail_file(ERROR_LOG)
         return render_template(
@@ -492,19 +447,17 @@ def create_app() -> Flask:
             raw = f.read().decode("utf-8")
         except Exception:
             return redirect(url_for("settings", error="Could not read uploaded file."))
-        ok, msg = import_backup(raw)
+        ok, data = import_backup(raw)
         if not ok:
-            return redirect(url_for("settings", error=msg))
-        store = _load_store()
-        config = build_config(store.get("configs", []))
-        write_config(config)
-        start_xray()
+            return redirect(url_for("settings", error=data))
+        result = persistence.replace_all(data)
+        msg = result.message if result.success else f"Restored {len(data)} configuration(s)."
         return redirect(url_for("configurations", message=msg))
 
     @app.route("/cert/self-signed", methods=["POST"])
     @login_required
     def cert_self_signed():
-        store = _load_store()
+        store = persistence.get_store()
         domain = store.get("domain", DOMAIN)
         ok, msg = regenerate_self_signed(domain)
         if ok:
@@ -526,8 +479,8 @@ def create_app() -> Flask:
     @app.route("/config/validate", methods=["POST"])
     @login_required
     def config_validate():
-        store = _load_store()
-        config = build_config(store.get("configs", []))
+        store = persistence.get_store()
+        config = build_xray_config(store.get("configs", []))
         ok, msg = validate_config(config)
         return jsonify({"ok": ok, "msg": msg})
 

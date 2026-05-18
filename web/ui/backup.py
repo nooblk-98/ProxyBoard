@@ -14,8 +14,8 @@ def export_backup() -> tuple[str, str]:
     return data, filename
 
 
-def import_backup(raw: str) -> tuple[bool, str]:
-    """Validate and write imported backup. Returns (ok, message)."""
+def import_backup(raw: str) -> tuple[bool, str | list]:
+    """Validate backup JSON and return parsed configs. Returns (ok, configs_or_error)."""
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as e:
@@ -27,5 +27,4 @@ def import_backup(raw: str) -> tuple[bool, str]:
     if not isinstance(payload["configs"], list):
         return False, "'configs' must be a list."
 
-    CONFIGS_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    return True, f"Restored {len(payload['configs'])} configuration(s)."
+    return True, payload["configs"]
