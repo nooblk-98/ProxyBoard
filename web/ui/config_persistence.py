@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from .constants import DEFAULTS
 from .system import ensure_certs, ensure_dirs
-from .types import ConfigId, Result, XrayConfigDict
+from .types import Result
 from .xray_config_builder import build_xray_config
 from .xray_core import start_xray
 
@@ -91,7 +91,7 @@ class ConfigPersistence:
         ensure_dirs()
         for c in store.get("configs", []):
             if c.get("enabled", True):
-                ensure_certs(c["domain"])
+                ensure_certs(c.get("domain", "example.com"))
         xray_cfg = build_xray_config(store.get("configs", []))
         self._write_xray_config(xray_cfg)
         self._save_store(store)

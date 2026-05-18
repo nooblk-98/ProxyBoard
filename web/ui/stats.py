@@ -33,12 +33,12 @@ def get_sys_info() -> dict:
     if platform.system() != "Linux":
         return info
     try:
-        with open("/proc/loadavg", "r") as f:
+        with open("/proc/loadavg") as f:
             info["cpu"] = f.read().split()[0]
     except OSError:
         logger.debug("cannot read /proc/loadavg")
     try:
-        with open("/proc/meminfo", "r") as f:
+        with open("/proc/meminfo") as f:
             lines = f.readlines()
         mem = {}
         for line in lines:
@@ -65,7 +65,7 @@ def get_sys_info() -> dict:
     except OSError:
         logger.debug("cannot statfs /")
     try:
-        with open("/proc/uptime", "r") as f:
+        with open("/proc/uptime") as f:
             secs = float(f.read().split()[0])
         info["uptime_str"] = _fmt_uptime(int(secs))
     except OSError:
@@ -104,7 +104,7 @@ def get_net_speed() -> dict:
     down_speed = 0.0
     if platform.system() == "Linux":
         try:
-            with open("/proc/net/dev", "r") as f:
+            with open("/proc/net/dev") as f:
                 lines = f.readlines()
             rx_bytes = 0
             tx_bytes = 0
@@ -158,7 +158,7 @@ def get_active_ports() -> list:
     if platform.system() == "Linux":
         for net_file in ["/proc/net/tcp", "/proc/net/tcp6"]:
             try:
-                with open(net_file, "r") as f:
+                with open(net_file) as f:
                     lines = f.readlines()[1:]
                 for line in lines:
                     parts = line.split()
@@ -214,9 +214,13 @@ def get_xray_stats() -> dict:
             up_speed = up_diff / elapsed if elapsed > 0 else 0
             down_speed = down_diff / elapsed if elapsed > 0 else 0
 
+            down_total = format_bytes_global(traffic['down'])
+            up_total = format_bytes_global(traffic['up'])
+            down_spd = format_bytes_global(down_speed)
+            up_spd = format_bytes_global(up_speed)
             output[email] = {
-                "total_str": f"{format_bytes_global(traffic['down'])} \u2193 {format_bytes_global(traffic['up'])} \u2191",
-                "speed_str": f"{format_bytes_global(down_speed)}/s \u2193 {format_bytes_global(up_speed)}/s \u2191",
+                "total_str": f"{down_total} \u2193 {up_total} \u2191",
+                "speed_str": f"{down_spd}/s \u2193 {up_spd}/s \u2191",
             }
 
         _last_stats = current_stats

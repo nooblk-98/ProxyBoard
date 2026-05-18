@@ -1,7 +1,7 @@
 from .config_persistence import ConfigPersistence
 from .constants import CONFIG_PATH, DATA_DIR
 from .routes import create_app
-from .system import ensure_dirs, ensure_certs
+from .system import ensure_certs, ensure_dirs
 from .watchdog import start_watchdog
 from .xray_config_builder import build_xray_config
 from .xray_core import is_xray_running, start_xray

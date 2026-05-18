@@ -5,7 +5,7 @@ import secrets
 
 from flask import redirect, render_template, request, session, url_for
 
-_SECRET_KEY = os.environ.get("UI_SECRET_KEY", secrets.token_hex(32))
+_SECRET_KEY = os.environ.get("UI_SECRET_KEY", "proxyboard-default-fallback-secret-change-me")
 _USERNAME = os.environ.get("UI_USERNAME", "admin")
 _PASSWORD_HASH = os.environ.get("UI_PASSWORD_HASH", "")
 _PASSWORD_RAW = os.environ.get("UI_PASSWORD", "")

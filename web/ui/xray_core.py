@@ -9,7 +9,7 @@ import subprocess
 import time
 import urllib.request
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .constants import (
@@ -18,16 +18,18 @@ from .constants import (
     XRAY_BIN,
     XRAY_RELEASE_BASE,
     XRAY_STABLE_VERSIONS,
+    XRAY_VERSION_FILE,
     XRAY_VERSIONS_CONFIG,
     XRAY_VERSIONS_DIR,
-    XRAY_VERSION_FILE,
 )
+
+logger = logging.getLogger(__name__)
 
 _xray_process = None
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def get_xray_version() -> str:
@@ -207,15 +209,15 @@ def _download_and_install(version_key: str) -> tuple[bool, str]:
                     if path.exists():
                         path.chmod(0o644)
                 return True, f"Installed {version_key}."
-            except Exception as exc:
-                last_error = exc
+            except Exception:
+                last_error = f"Failed to download/install {version_key}"
                 try:
                     zip_path.unlink(missing_ok=True)
                 except OSError:
                     pass
                 continue
 
-    return False, f"Failed to download/install {version_key}: {last_error}"
+    return False, last_error or f"Failed to download/install {version_key}."
 
 
 def _pid_running(pid: int) -> bool:
@@ -260,9 +262,6 @@ def stop_xray() -> None:
             _xray_process.wait(timeout=3)
         except Exception:
             logger.warning("xray process did not stop gracefully", exc_info=True)
-logger = logging.getLogger(__name__)
-
-_xray_process = None
 
 
 def start_xray() -> None:
@@ -374,7 +373,7 @@ def download_with_progress(version_key: str, progress_cb) -> tuple[bool, str]:
 
                 progress_cb(99, f"Installed {version_key} successfully.")
                 return True, f"Installed {version_key}."
-            except Exception as exc:
+            except Exception:
                 try:
                     zip_path.unlink(missing_ok=True)
                 except OSError:

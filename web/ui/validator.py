@@ -8,6 +8,7 @@ from .constants import XRAY_BIN
 
 def validate_config(config: dict) -> tuple[bool, str]:
     """Run xray --test against config dict. Returns (ok, message)."""
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False, encoding="utf-8"
@@ -21,7 +22,6 @@ def validate_config(config: dict) -> tuple[bool, str]:
             text=True,
             timeout=10,
         )
-        tmp_path.unlink(missing_ok=True)
 
         if result.returncode == 0:
             return True, "Configuration is valid."
@@ -33,3 +33,6 @@ def validate_config(config: dict) -> tuple[bool, str]:
         return False, "Validation timed out."
     except OSError as e:
         return False, f"Validation error: {e}"
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)

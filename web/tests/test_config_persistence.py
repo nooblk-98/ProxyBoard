@@ -1,8 +1,6 @@
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from ui.config_persistence import ConfigPersistence
 
 
@@ -38,8 +36,18 @@ class TestConfigPersistence:
         assert len(store["configs"]) == 2  # default + new
 
     def test_add_config_port_collision_ws(self, persistence):
-        sample_config = {"id": "new-cfg", "name": "Collider", "ws_enabled": True, "ws_port": 10001, "tls_enabled": False}
-        persistence._load_store = lambda: {"configs": [{"id": "existing", "name": "Existing", "ws_enabled": True, "ws_port": 10001, "tls_enabled": False}]}
+        sample_config = {
+            "id": "new-cfg", "name": "Collider",
+            "ws_enabled": True, "ws_port": 10001, "tls_enabled": False,
+        }
+        persistence._load_store = lambda: {
+            "configs": [
+                {
+                    "id": "existing", "name": "Existing",
+                    "ws_enabled": True, "ws_port": 10001, "tls_enabled": False,
+                }
+            ]
+        }
         persistence._save_store = lambda s: None
         result = persistence.add(sample_config)
         assert result.success is False
@@ -152,7 +160,10 @@ class TestConfigPersistence:
     # ── validation edge cases ───────────────────────────────────
 
     def test_same_ws_tls_port_rejected(self, persistence):
-        config = {"id": "x", "ws_enabled": True, "ws_port": 8080, "tls_enabled": True, "tls_port": 8080}
+        config = {
+            "id": "x", "ws_enabled": True, "ws_port": 8080,
+            "tls_enabled": True, "tls_port": 8080,
+        }
         store = {"configs": []}
         error = persistence._validate_ports(config, store)
         assert error is not None

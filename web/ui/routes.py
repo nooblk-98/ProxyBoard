@@ -4,15 +4,11 @@ import json
 import logging
 import queue
 import threading
-from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
-logger = logging.getLogger(__name__)
-
-from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, url_for
 
 try:
     import qrcode
@@ -21,17 +17,14 @@ except ImportError:
 
 from .auth import AUTH_ENABLED, login_required, register_auth_routes
 from .backup import export_backup, import_backup
+from .config_persistence import ConfigPersistence
 from .constants import CONFIG_PATH, DATA_DIR, DEFAULTS, DOMAIN, PID_PATH, XRAY_BIN
 from .log_reader import ACCESS_LOG, ERROR_LOG, stream_log, tail_file
 from .stats import get_active_ports, get_net_speed, get_sys_info, get_xray_stats
-from .store import (
-    _coerce_int,
-    _summary,
-)
-from .xray_config_builder import build_xray_config
-from .config_persistence import ConfigPersistence
+from .store import _coerce_int, _summary
 from .system import regenerate_self_signed, save_manual_cert_paths
 from .validator import validate_config
+from .xray_config_builder import build_xray_config
 from .xray_core import (
     _current_xray_key,
     _now_iso,
@@ -43,6 +36,8 @@ from .xray_core import (
     start_xray,
     switch_xray_version,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _vmess_link(name: str, domain: str, port: int, uuid: str, path: str, tls: bool, host: str = "") -> str:
@@ -95,7 +90,7 @@ def get_status() -> dict:
     config_mtime = None
     if config_exists:
         config_mtime = datetime.fromtimestamp(
-            CONFIG_PATH.stat().st_mtime, tz=timezone.utc
+            CONFIG_PATH.stat().st_mtime, tz=UTC
         ).strftime("%Y-%m-%d %H:%M:%S UTC")
     running = is_xray_running()
     pid = None
@@ -144,13 +139,27 @@ def _prepare_configs_data(persistence):
         domain = c.get("domain", DOMAIN)
         ws_host = c.get("ws_host", domain)
         tls_host = c.get("tls_host", domain)
+        tls_port = c.get("tls_port", 443)
+        tls_uuid = c.get("tls_uuid", "")
+        tls_path = c.get("tls_path", "")
+        ws_port = c.get("ws_port", 80)
+        ws_uuid = c.get("ws_uuid", "")
+        ws_path = c.get("ws_path", "")
         if c.get("tls_enabled"):
-            url = _vless_link(name, domain, c["tls_port"], c["tls_uuid"], c["tls_path"], True, tls_host) if proto == "vless" else _vmess_link(name, domain, c["tls_port"], c["tls_uuid"], c["tls_path"], True, tls_host)
+            url = (
+                _vless_link(name, domain, tls_port, tls_uuid, tls_path, True, tls_host)
+                if proto == "vless"
+                else _vmess_link(name, domain, tls_port, tls_uuid, tls_path, True, tls_host)
+            )
             c["links"].append({"label": "WebSocket + TLS", "url": url, "qr": _qr_data(url)})
         if c.get("ws_enabled"):
-            url = _vless_link(name, domain, c["ws_port"], c["ws_uuid"], c["ws_path"], False, ws_host) if proto == "vless" else _vmess_link(name, domain, c["ws_port"], c["ws_uuid"], c["ws_path"], False, ws_host)
+            url = (
+                _vless_link(name, domain, ws_port, ws_uuid, ws_path, False, ws_host)
+                if proto == "vless"
+                else _vmess_link(name, domain, ws_port, ws_uuid, ws_path, False, ws_host)
+            )
             c["links"].append({"label": "WebSocket (No TLS)", "url": url, "qr": _qr_data(url)})
-    
+
     return store, configs, active_count
 
 
@@ -274,6 +283,9 @@ def create_app() -> Flask:
         if edit_id == "new":
             edit_id = None
 
+        domain_fallback = request.form.get("domain", DEFAULTS["domain"])
+        ws_host = request.form.get("ws_host", domain_fallback).strip() or DEFAULTS["domain"]
+        tls_host = request.form.get("tls_host", domain_fallback).strip() or DEFAULTS["domain"]
         form = {
             "id": edit_id or str(uuid4()),
             "name": request.form.get("name", DEFAULTS["name"]).strip() or DEFAULTS["name"],
@@ -283,8 +295,8 @@ def create_app() -> Flask:
             "tls_enabled": request.form.get("network_security") == "tls",
             "ws_path": request.form.get("ws_path", DEFAULTS["ws_path"]).strip() or DEFAULTS["ws_path"],
             "tls_path": request.form.get("tls_path", DEFAULTS["tls_path"]).strip() or DEFAULTS["tls_path"],
-            "ws_host": request.form.get("ws_host", request.form.get("domain", DEFAULTS["domain"])).strip() or DEFAULTS["domain"],
-            "tls_host": request.form.get("tls_host", request.form.get("domain", DEFAULTS["domain"])).strip() or DEFAULTS["domain"],
+            "ws_host": ws_host,
+            "tls_host": tls_host,
             "ws_uuid": request.form.get("ws_uuid", "").strip() or str(uuid4()),
             "tls_uuid": request.form.get("tls_uuid", "").strip() or str(uuid4()),
             "ws_email": request.form.get("ws_email", DEFAULTS["ws_email"]).strip(),
@@ -366,7 +378,7 @@ def create_app() -> Flask:
 
         def generate():
             if not entry:
-                yield f"data: {json.dumps({'type': 'error', 'msg': 'Version not found.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'msg': 'Version not found. '})}\n\n"
                 return
 
             if entry.get("installed"):

@@ -14,9 +14,9 @@ def tail_file(path: Path, lines: int = 100) -> list[str]:
     if not path.exists():
         return []
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
-        return [l.rstrip() for l in all_lines[-lines:]]
+        return [line.rstrip() for line in all_lines[-lines:]]
     except OSError:
         logger.warning("failed to read log: %s", path)
         return []
@@ -28,7 +28,7 @@ def stream_log(path: Path, poll_interval: float = 1.0):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
 
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
+    with open(path, encoding="utf-8", errors="replace") as f:
         f.seek(0, 2)  # seek to end
         while True:
             line = f.readline()

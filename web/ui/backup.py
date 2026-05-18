@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .constants import CONFIGS_PATH
 
@@ -10,7 +10,7 @@ def export_backup() -> tuple[str, str]:
         data = CONFIGS_PATH.read_text(encoding="utf-8")
     else:
         data = json.dumps({"configs": []}, indent=2)
-    filename = f"noobx-backup-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.json"
+    filename = f"proxyboard-backup-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.json"
     return data, filename
 
 
