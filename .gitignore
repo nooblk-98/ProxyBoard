@@ -75,3 +75,4 @@ xray-versions-local/
 *.bak
 noobx-backup-*.json
 .claude
+.kilo/kilo.json
