@@ -486,10 +486,12 @@ function showCopySuccess(button) {
 }
 
 function closeModal(event) {
-  if (event.target.classList.contains("mdc-dialog-scrim") && event.target.id === "edit-modal-scrim") {
+  const scrim = event.target;
+  if (!scrim.classList.contains("mdc-dialog-scrim")) return;
+  if (scrim.id === "edit-modal-scrim") {
     document.getElementById("edit-modal-scrim").style.display = "none";
-  } else if (event.target.classList.contains("mdc-dialog-scrim") && event.target.id !== "qr-modal-scrim") {
-    document.getElementById("edit-modal-scrim").style.display = "none";
+  } else if (scrim.id === "qr-modal-scrim") {
+    document.getElementById("qr-modal-scrim").style.display = "none";
   }
 }
 

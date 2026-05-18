@@ -3,7 +3,7 @@ import hashlib
 import os
 import secrets
 
-from flask import redirect, request, session, url_for
+from flask import redirect, render_template, request, session, url_for
 
 _SECRET_KEY = os.environ.get("UI_SECRET_KEY", secrets.token_hex(32))
 _USERNAME = os.environ.get("UI_USERNAME", "admin")
@@ -47,7 +47,6 @@ def register_auth_routes(app):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        from flask import render_template
         error = None
         if request.method == "POST":
             username = request.form.get("username", "").strip()

@@ -1,6 +1,8 @@
 import json
+import os
 import platform
 import subprocess
+import threading
 import time
 
 from .constants import XRAY_BIN
@@ -11,6 +13,7 @@ _last_net_time = None
 _last_speeds = {"up": 0.0, "down": 0.0}
 _last_stats = {}
 _last_stats_time = 0.0
+_stats_lock = threading.Lock()
 
 
 def get_sys_info() -> dict:
@@ -48,7 +51,6 @@ def get_sys_info() -> dict:
     except Exception:
         pass
     try:
-        import os
         st = os.statvfs("/")
         total_b = st.f_frsize * st.f_blocks
         free_b = st.f_frsize * st.f_bavail
@@ -112,20 +114,21 @@ def get_net_speed() -> dict:
                     rx_bytes += int(ifparts[0])
                     tx_bytes += int(ifparts[8])
             now = time.time()
-            if _last_net_time is not None and _last_net_io is not None:
-                elapsed = now - _last_net_time
-                if elapsed > 0.5:
-                    down_speed = (rx_bytes - _last_net_io[0]) / elapsed
-                    up_speed = (tx_bytes - _last_net_io[1]) / elapsed
-                    down_speed = (down_speed * 0.6) + (_last_speeds["down"] * 0.4)
-                    up_speed = (up_speed * 0.6) + (_last_speeds["up"] * 0.4)
-                else:
-                    down_speed = _last_speeds["down"]
-                    up_speed = _last_speeds["up"]
-            _last_net_io = (rx_bytes, tx_bytes)
-            _last_net_time = now
-            _last_speeds["up"] = up_speed
-            _last_speeds["down"] = down_speed
+            with _stats_lock:
+                if _last_net_time is not None and _last_net_io is not None:
+                    elapsed = now - _last_net_time
+                    if elapsed > 0.5:
+                        down_speed = (rx_bytes - _last_net_io[0]) / elapsed
+                        up_speed = (tx_bytes - _last_net_io[1]) / elapsed
+                        down_speed = (down_speed * 0.6) + (_last_speeds["down"] * 0.4)
+                        up_speed = (up_speed * 0.6) + (_last_speeds["up"] * 0.4)
+                    else:
+                        down_speed = _last_speeds["down"]
+                        up_speed = _last_speeds["up"]
+                _last_net_io = (rx_bytes, tx_bytes)
+                _last_net_time = now
+                _last_speeds["up"] = up_speed
+                _last_speeds["down"] = down_speed
         except Exception:
             pass
 
@@ -197,21 +200,22 @@ def get_xray_stats() -> dict:
         except Exception:
             pass
 
-    elapsed = now - _last_stats_time if _last_stats_time else 0
-    output = {}
-    for email, traffic in current_stats.items():
-        prev = _last_stats.get(email, {"up": 0, "down": 0})
-        up_diff = max(0, traffic["up"] - prev["up"])
-        down_diff = max(0, traffic["down"] - prev["down"])
+    with _stats_lock:
+        elapsed = now - _last_stats_time if _last_stats_time else 0
+        output = {}
+        for email, traffic in current_stats.items():
+            prev = _last_stats.get(email, {"up": 0, "down": 0})
+            up_diff = max(0, traffic["up"] - prev["up"])
+            down_diff = max(0, traffic["down"] - prev["down"])
 
-        up_speed = up_diff / elapsed if elapsed > 0 else 0
-        down_speed = down_diff / elapsed if elapsed > 0 else 0
+            up_speed = up_diff / elapsed if elapsed > 0 else 0
+            down_speed = down_diff / elapsed if elapsed > 0 else 0
 
-        output[email] = {
-            "total_str": f"{format_bytes_global(traffic['down'])} \u2193 {format_bytes_global(traffic['up'])} \u2191",
-            "speed_str": f"{format_bytes_global(down_speed)}/s \u2193 {format_bytes_global(up_speed)}/s \u2191",
-        }
+            output[email] = {
+                "total_str": f"{format_bytes_global(traffic['down'])} \u2193 {format_bytes_global(traffic['up'])} \u2191",
+                "speed_str": f"{format_bytes_global(down_speed)}/s \u2193 {format_bytes_global(up_speed)}/s \u2191",
+            }
 
-    _last_stats = current_stats
-    _last_stats_time = now
+        _last_stats = current_stats
+        _last_stats_time = now
     return output

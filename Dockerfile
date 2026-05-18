@@ -24,8 +24,8 @@ COPY web/ /opt/xray-web/
 # Download only the default (latest) Xray version at build time
 RUN python3 /opt/xray/scripts/download_xray_versions.py --only-default
 
-# Set default Xray core (matches first entry in versions.json)
-RUN ln -sf /opt/xray/versions/v26.2.6/xray /usr/local/bin/xray && chmod +x /usr/local/bin/xray
+# Set default Xray core (uses first entry from versions.json)
+RUN ln -sf /opt/xray/versions/$(python3 -c "import json; print(json.load(open('/opt/xray/versions.json'))[0])")/xray /usr/local/bin/xray && chmod +x /usr/local/bin/xray
 
 WORKDIR /opt/xray-web
 

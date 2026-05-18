@@ -2,7 +2,9 @@ import base64
 import io
 import json
 import logging
-from datetime import datetime
+import queue
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,8 +14,6 @@ try:
     import qrcode
 except Exception:
     qrcode = None
-
-import io
 
 from .auth import AUTH_ENABLED, login_required, register_auth_routes
 from .backup import export_backup, import_backup
@@ -89,9 +89,9 @@ def get_status() -> dict:
     config_exists = CONFIG_PATH.exists()
     config_mtime = None
     if config_exists:
-        config_mtime = datetime.utcfromtimestamp(CONFIG_PATH.stat().st_mtime).strftime(
-            "%Y-%m-%d %H:%M:%S UTC"
-        )
+        config_mtime = datetime.fromtimestamp(
+            CONFIG_PATH.stat().st_mtime, tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M:%S UTC")
     running = is_xray_running()
     pid = None
     if PID_PATH.exists():
@@ -157,15 +157,7 @@ def create_app() -> Flask:
 
     register_auth_routes(app)
 
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-
-    @app.before_request
-    def suppress_status_logs():
-        if request.path in ['/status', '/healthz']:
-            logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        else:
-            logging.getLogger('werkzeug').setLevel(logging.INFO)
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
     @app.context_processor
     def inject_auth():
@@ -313,6 +305,9 @@ def create_app() -> Flask:
         if not form["ws_enabled"] and not form["tls_enabled"]:
             return redirect(url_for("configurations", error="Enable at least one inbound.", edit=edit_id or "new"))
 
+        if form["ws_enabled"] and form["tls_enabled"] and form["ws_port"] == form["tls_port"]:
+            return redirect(url_for("configurations", error="WS and TLS ports must be different within the same config.", edit=edit_id or "new"))
+
         for other_config in store.get("configs", []):
             if other_config.get("id") == form["id"]:
                 continue
@@ -406,22 +401,18 @@ def create_app() -> Flask:
     @app.route("/xray/install-stream/<version_key>")
     @login_required
     def install_stream(version_key: str):
-        import json as _json
-        import queue
-        import threading
-
         versions = {v["key"]: v for v in list_xray_versions()}
         entry = versions.get(version_key)
 
         def generate():
             if not entry:
-                yield f"data: {_json.dumps({'type': 'error', 'msg': 'Version not found.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'msg': 'Version not found.'})}\n\n"
                 return
 
             if entry.get("installed"):
-                yield f"data: {_json.dumps({'type': 'status', 'msg': 'Already installed, switching...'})}\n\n"
+                yield f"data: {json.dumps({'type': 'status', 'msg': 'Already installed, switching...'})}\n\n"
                 ok, msg = switch_xray_version(version_key)
-                yield f"data: {_json.dumps({'type': 'done' if ok else 'error', 'msg': msg})}\n\n"
+                yield f"data: {json.dumps({'type': 'done' if ok else 'error', 'msg': msg})}\n\n"
                 return
 
             q: queue.Queue = queue.Queue()
@@ -439,11 +430,11 @@ def create_app() -> Flask:
                 if item.get("done"):
                     if item["ok"]:
                         ok2, msg2 = switch_xray_version(version_key)
-                        yield f"data: {_json.dumps({'type': 'done' if ok2 else 'error', 'msg': msg2, 'pct': 100})}\n\n"
+                        yield f"data: {json.dumps({'type': 'done' if ok2 else 'error', 'msg': msg2, 'pct': 100})}\n\n"
                     else:
-                        yield f"data: {_json.dumps({'type': 'error', 'msg': item['msg']})}\n\n"
+                        yield f"data: {json.dumps({'type': 'error', 'msg': item['msg']})}\n\n"
                     break
-                yield f"data: {_json.dumps(item)}\n\n"
+                yield f"data: {json.dumps(item)}\n\n"
 
         return Response(generate(), mimetype="text/event-stream",
                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

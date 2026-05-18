@@ -1,5 +1,7 @@
 import json
+import logging
 import os
+import platform
 import re
 import shutil
 import signal
@@ -7,7 +9,7 @@ import subprocess
 import time
 import urllib.request
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .constants import (
@@ -25,7 +27,7 @@ _xray_process = None
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def get_xray_version() -> str:
@@ -143,13 +145,11 @@ def _current_xray_key(versions: list[dict]) -> str | None:
 
 
 def _asset_candidates_for_host() -> list[str]:
-    import platform
     machine = platform.machine().lower()
     if machine in {"x86_64", "amd64"}:
         return [
             "Xray-linux-64.zip",
             "Xray-linux-amd64.zip",
-            "Xray-linux-64.zip",
         ]
     if machine in {"aarch64", "arm64"}:
         return [
@@ -174,7 +174,6 @@ def _tag_candidates(tag: str) -> list[str]:
 
 
 def _download_and_install(version_key: str) -> tuple[bool, str]:
-    import json
     asset_names = _asset_candidates_for_host()
     tag_candidates = _tag_candidates(version_key)
 
@@ -243,6 +242,10 @@ def stop_xray() -> None:
             if _pid_running(pid):
                 os.kill(pid, signal.SIGTERM)
                 time.sleep(0.5)
+                try:
+                    os.waitpid(pid, 0)
+                except ChildProcessError:
+                    pass
         except Exception:
             pass
         try:
@@ -251,6 +254,10 @@ def stop_xray() -> None:
             pass
     if _xray_process is not None and _xray_process.poll() is None:
         _xray_process.terminate()
+        try:
+            _xray_process.wait(timeout=3)
+        except Exception:
+            pass
         _xray_process = None
 
 
@@ -264,8 +271,8 @@ def start_xray() -> None:
     try:
         _xray_process = subprocess.Popen([str(XRAY_BIN), "-c", str(CONFIG_PATH)])
         PID_PATH.write_text(str(_xray_process.pid), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.error("Failed to start Xray: %s", exc)
 
 
 def switch_xray_version(version_key: str) -> tuple[bool, str]:

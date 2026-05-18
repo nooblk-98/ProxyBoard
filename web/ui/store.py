@@ -5,15 +5,6 @@ from uuid import uuid4
 from .constants import CONFIG_PATH, CONFIGS_PATH, DEFAULTS, DOMAIN
 
 
-def _read_config() -> dict | None:
-    if not CONFIG_PATH.exists():
-        return None
-    try:
-        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-
-
 def _coerce_int(value: str, field: str) -> int:
     try:
         number = int(value)
@@ -22,52 +13,6 @@ def _coerce_int(value: str, field: str) -> int:
     if number < 1 or number > 65535:
         raise ValueError(f"{field} must be 1-65535")
     return number
-
-
-def load_form_state() -> dict:
-    data = dict(DEFAULTS)
-    cfg = _read_config()
-    if not cfg:
-        return data
-
-    inbounds = cfg.get("inbounds", [])
-    for inbound in inbounds:
-        stream = inbound.get("streamSettings", {})
-        network = stream.get("network")
-        security = stream.get("security", "")
-        settings = inbound.get("settings", {})
-        clients = settings.get("clients", [])
-        client = clients[0] if clients else {}
-        ws_settings = stream.get("wsSettings", {})
-
-        if network == "ws" and not security:
-            data["ws_enabled"] = True
-            data["ws_port"] = inbound.get("port", data["ws_port"])
-            data["ws_path"] = ws_settings.get("path", data["ws_path"])
-            data["ws_uuid"] = client.get("id", data["ws_uuid"])
-            data["ws_email"] = client.get("email", data["ws_email"])
-            data["protocol"] = inbound.get("protocol", data["protocol"])
-            host = ws_settings.get("host")
-            if host:
-                data["ws_host"] = host
-
-        if network == "ws" and security == "tls":
-            data["tls_enabled"] = True
-            data["tls_port"] = inbound.get("port", data["tls_port"])
-            data["tls_path"] = ws_settings.get("path", data["tls_path"])
-            data["tls_uuid"] = client.get("id", data["tls_uuid"])
-            data["tls_email"] = client.get("email", data["tls_email"])
-            data["protocol"] = inbound.get("protocol", data["protocol"])
-            host = ws_settings.get("host")
-            if host:
-                data["tls_host"] = host
-            tls_settings = stream.get("tlsSettings", {})
-            certs = tls_settings.get("certificates", [])
-            if certs:
-                data["tls_cert"] = certs[0].get("certificateFile", data["tls_cert"])
-                data["tls_key"] = certs[0].get("keyFile", data["tls_key"])
-
-    return data
 
 
 def _load_store() -> dict:
@@ -120,9 +65,13 @@ def _summary(item: dict) -> str:
 
 def build_config(configs: list) -> dict:
     inbounds = []
+    dns_server = DEFAULTS["dns"]
     for form in configs:
         if not form.get("enabled", True):
             continue
+
+        if dns_server == DEFAULTS["dns"] and form.get("dns"):
+            dns_server = form["dns"]
 
         domain = form["domain"]
         ws_enabled = form.get("ws_enabled", False)
@@ -259,7 +208,7 @@ def build_config(configs: list) -> dict:
         "dns": {
             "servers": [
                 {
-                    "address": form.get("dns", DEFAULTS["dns"]),
+                    "address": dns_server,
                     "port": 53
                 }
             ]
