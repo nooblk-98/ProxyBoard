@@ -4,15 +4,19 @@ import json
 import logging
 import queue
 import threading
+from collections.abc import Generator
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session, url_for
 
 try:
     import qrcode
-except Exception:
+except ImportError:
     qrcode = None
 
 from .auth import AUTH_ENABLED, login_required, register_auth_routes
@@ -82,6 +86,7 @@ def _qr_data(url: str) -> str | None:
         img.save(buf, format="PNG")
         return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8")
     except Exception:
+        logger.warning("failed to generate QR code", exc_info=True)
         return None
 
 
@@ -445,7 +450,7 @@ def create_app() -> Flask:
             return redirect(url_for("settings", error="No file uploaded."))
         try:
             raw = f.read().decode("utf-8")
-        except Exception:
+        except UnicodeDecodeError:
             return redirect(url_for("settings", error="Could not read uploaded file."))
         ok, data = import_backup(raw)
         if not ok:

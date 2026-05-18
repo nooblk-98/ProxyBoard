@@ -41,7 +41,7 @@ def get_xray_version() -> str:
                     return m.group(1)
                 return lines[0].strip()
     except Exception:
-        pass
+        logger.debug("xray version check failed", exc_info=True)
     return "Unknown"
 
 
@@ -56,7 +56,7 @@ def _version_from_binary(path: Path) -> str:
                     return m.group(1)
                 return lines[0].strip()
     except Exception:
-        pass
+        logger.debug("version check failed for %s", path)
     return "Unknown"
 
 
@@ -77,6 +77,7 @@ def _parse_stable_versions() -> list[str]:
             versions = payload.get("versions", [])
             return [str(v).strip() for v in versions if str(v).strip()]
         except Exception:
+            logger.warning("failed to parse stable versions config", exc_info=True)
             return []
 
     return []
@@ -133,13 +134,13 @@ def list_xray_versions() -> list[dict]:
 def _current_xray_key(versions: list[dict]) -> str | None:
     try:
         current = XRAY_BIN.resolve()
-    except Exception:
+    except OSError:
         current = XRAY_BIN
     for entry in versions:
         try:
             if Path(entry["path"]).resolve() == current:
                 return entry["key"]
-        except Exception:
+        except OSError:
             continue
     return None
 
@@ -210,9 +211,10 @@ def _download_and_install(version_key: str) -> tuple[bool, str]:
                 last_error = exc
                 try:
                     zip_path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
                     pass
                 continue
+
     return False, f"Failed to download/install {version_key}: {last_error}"
 
 
@@ -246,19 +248,21 @@ def stop_xray() -> None:
                     os.waitpid(pid, 0)
                 except ChildProcessError:
                     pass
-        except Exception:
-            pass
+        except OSError:
+            logger.warning("failed to stop xray PID", exc_info=True)
         try:
             PID_PATH.unlink(missing_ok=True)
-        except Exception:
+        except OSError:
             pass
     if _xray_process is not None and _xray_process.poll() is None:
         _xray_process.terminate()
         try:
             _xray_process.wait(timeout=3)
         except Exception:
-            pass
-        _xray_process = None
+            logger.warning("xray process did not stop gracefully", exc_info=True)
+logger = logging.getLogger(__name__)
+
+_xray_process = None
 
 
 def start_xray() -> None:
@@ -287,23 +291,23 @@ def switch_xray_version(version_key: str) -> tuple[bool, str]:
     if not os.access(target, os.X_OK):
         try:
             target.chmod(0o755)
-        except Exception:
+        except OSError:
             return False, "Selected version is not executable."
 
     stop_xray()
     try:
         if XRAY_BIN.exists() or XRAY_BIN.is_symlink():
             XRAY_BIN.unlink()
-    except Exception:
-        pass
+    except OSError:
+        logger.warning("failed to remove existing xray binary", exc_info=True)
 
     try:
         XRAY_BIN.symlink_to(target)
-    except Exception:
+    except OSError:
         try:
             shutil.copy2(target, XRAY_BIN)
             XRAY_BIN.chmod(0o755)
-        except Exception as exc:
+        except OSError as exc:
             return False, f"Failed to switch core: {exc}"
 
     XRAY_VERSION_FILE.write_text(version_key, encoding="utf-8")
@@ -365,7 +369,7 @@ def download_with_progress(version_key: str, progress_cb) -> tuple[bool, str]:
 
                 try:
                     zip_path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
                     pass
 
                 progress_cb(99, f"Installed {version_key} successfully.")
@@ -373,7 +377,7 @@ def download_with_progress(version_key: str, progress_cb) -> tuple[bool, str]:
             except Exception as exc:
                 try:
                     zip_path.unlink(missing_ok=True)
-                except Exception:
+                except OSError:
                     pass
                 continue
 

@@ -39,7 +39,7 @@ def regenerate_self_signed(domain: str) -> tuple[bool, str]:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True, "Self-signed certificate regenerated."
     except Exception as e:
-        return False, f"Failed to generate certificate: {e}"
+        return False, f"Failed to generate certificate: {e}"  # noqa: TRY200
 
 
 def save_manual_cert_paths(cert_src: str, key_src: str) -> tuple[bool, str]:
@@ -56,7 +56,7 @@ def save_manual_cert_paths(cert_src: str, key_src: str) -> tuple[bool, str]:
         shutil.copy2(src_cert, cert_path)
         shutil.copy2(src_key, key_path)
         return True, "Manual certificates saved successfully."
-    except Exception as e:
+    except OSError as e:
         return False, f"Failed to save certificates: {e}"
 
 

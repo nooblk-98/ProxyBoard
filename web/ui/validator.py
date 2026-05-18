@@ -31,5 +31,5 @@ def validate_config(config: dict) -> tuple[bool, str]:
         return False, "Xray binary not found — cannot validate."
     except subprocess.TimeoutExpired:
         return False, "Validation timed out."
-    except Exception as e:
+    except OSError as e:
         return False, f"Validation error: {e}"

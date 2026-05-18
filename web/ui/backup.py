@@ -21,9 +21,10 @@ def import_backup(raw: str) -> tuple[bool, str | list]:
     except json.JSONDecodeError as e:
         return False, f"Invalid JSON: {e}"
 
-    if not isinstance(payload, dict) or "configs" not in payload:
+    if not isinstance(payload, dict):
+        return False, "Backup must be a JSON object."
+    if "configs" not in payload:
         return False, "Missing 'configs' key — not a valid ProxyBoard backup."
-
     if not isinstance(payload["configs"], list):
         return False, "'configs' must be a list."
 

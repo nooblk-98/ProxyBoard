@@ -1,21 +1,15 @@
 import json
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
 from .constants import DEFAULTS
 from .system import ensure_certs, ensure_dirs
+from .types import ConfigId, Result, XrayConfigDict
 from .xray_config_builder import build_xray_config
 from .xray_core import start_xray
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class Result:
-    success: bool
-    message: str = ""
 
 
 class ConfigPersistence:
@@ -38,7 +32,8 @@ class ConfigPersistence:
             return store
         try:
             store = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as err:
+            logger.warning("corrupt configs.json, recreating: %s", err)
             path.parent.mkdir(parents=True, exist_ok=True)
             default_item = dict(DEFAULTS)
             default_item["id"] = str(uuid4())
@@ -147,9 +142,8 @@ class ConfigPersistence:
         store["configs"] = [c for c in store.get("configs", []) if c.get("id") != config_id]
         if len(store["configs"]) >= original_len:
             return Result(False, "Config not found.")
-        result = self._commit(store)
-        result.message = "Config deleted."
-        return result
+        self._commit(store)
+        return Result(True, "Config deleted.")
 
     def toggle(self, config_id: str) -> Result:
         store = self._load_store()
@@ -158,9 +152,8 @@ class ConfigPersistence:
             return Result(False, "Config not found.")
         item["enabled"] = not item.get("enabled", True)
         label = "enabled" if item["enabled"] else "disabled"
-        result = self._commit(store)
-        result.message = f"Config {label}."
-        return result
+        self._commit(store)
+        return Result(True, f"Config {label}.")
 
     def replace_all(self, configs: list[dict]) -> Result:
         store = {"configs": configs}

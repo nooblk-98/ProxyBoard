@@ -1,6 +1,8 @@
+import logging
 import threading
 import time
 
+logger = logging.getLogger(__name__)
 
 _watchdog_thread: threading.Thread | None = None
 _stop_event = threading.Event()
@@ -16,7 +18,7 @@ def start_watchdog(is_running_fn, restart_fn, interval: int = 10) -> None:
                 if not is_running_fn():
                     restart_fn()
             except Exception:
-                pass
+                logger.warning("watchdog iteration failed", exc_info=True)
 
     _watchdog_thread = threading.Thread(target=_loop, daemon=True, name="xray-watchdog")
     _watchdog_thread.start()

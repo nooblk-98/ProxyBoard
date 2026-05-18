@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import platform
 import subprocess
@@ -7,6 +8,8 @@ import time
 
 from .constants import XRAY_BIN
 from .xray_core import is_xray_running
+
+logger = logging.getLogger(__name__)
 
 _last_net_io = None
 _last_net_time = None
@@ -32,8 +35,8 @@ def get_sys_info() -> dict:
     try:
         with open("/proc/loadavg", "r") as f:
             info["cpu"] = f.read().split()[0]
-    except Exception:
-        pass
+    except OSError:
+        logger.debug("cannot read /proc/loadavg")
     try:
         with open("/proc/meminfo", "r") as f:
             lines = f.readlines()
@@ -48,8 +51,8 @@ def get_sys_info() -> dict:
             info["mem"] = f"{(used / total) * 100:.1f}"
             info["mem_used_str"] = _fmt_kb(used)
             info["mem_total_str"] = _fmt_kb(total)
-    except Exception:
-        pass
+    except OSError:
+        logger.debug("cannot read /proc/meminfo")
     try:
         st = os.statvfs("/")
         total_b = st.f_frsize * st.f_blocks
@@ -59,14 +62,14 @@ def get_sys_info() -> dict:
             info["disk_pct"] = f"{(used_b / total_b) * 100:.1f}"
             info["disk_used_str"] = _fmt_bytes(used_b)
             info["disk_total_str"] = _fmt_bytes(total_b)
-    except Exception:
-        pass
+    except OSError:
+        logger.debug("cannot statfs /")
     try:
         with open("/proc/uptime", "r") as f:
             secs = float(f.read().split()[0])
         info["uptime_str"] = _fmt_uptime(int(secs))
-    except Exception:
-        pass
+    except OSError:
+        logger.debug("cannot read /proc/uptime")
     return info
 
 
@@ -129,8 +132,8 @@ def get_net_speed() -> dict:
                 _last_net_time = now
                 _last_speeds["up"] = up_speed
                 _last_speeds["down"] = down_speed
-        except Exception:
-            pass
+        except OSError:
+            logger.debug("cannot read /proc/net/dev")
 
     return {
         "up_str": f"{format_bytes_global(max(0, up_speed))}/s",
@@ -164,8 +167,8 @@ def get_active_ports() -> list:
                         if ":" in local_addr:
                             port_hex = local_addr.split(":")[1]
                             active_ports.add(int(port_hex, 16))
-            except Exception:
-                pass
+            except OSError:
+                logger.debug("cannot read %s", net_file)
     return list(active_ports)
 
 
@@ -198,7 +201,7 @@ def get_xray_stats() -> dict:
                         elif direction == "downlink":
                             current_stats[email]["down"] += value
         except Exception:
-            pass
+            logger.debug("xray stats query failed", exc_info=True)
 
     with _stats_lock:
         elapsed = now - _last_stats_time if _last_stats_time else 0

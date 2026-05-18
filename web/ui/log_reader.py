@@ -1,7 +1,10 @@
+import logging
 import time
 from pathlib import Path
 
 from .constants import LOG_DIR
+
+logger = logging.getLogger(__name__)
 
 ACCESS_LOG = LOG_DIR / "access.log"
 ERROR_LOG = LOG_DIR / "error.log"
@@ -14,7 +17,8 @@ def tail_file(path: Path, lines: int = 100) -> list[str]:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
         return [l.rstrip() for l in all_lines[-lines:]]
-    except Exception:
+    except OSError:
+        logger.warning("failed to read log: %s", path)
         return []
 
 

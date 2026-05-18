@@ -1,7 +1,10 @@
+from collections.abc import Sequence
+
 from .constants import DEFAULTS
+from .types import XrayConfigDict
 
 
-def build_xray_config(configs: list) -> dict:
+def build_xray_config(configs: Sequence[XrayConfigDict]) -> dict:
     inbounds = []
     dns_server = DEFAULTS["dns"]
     for form in configs:
